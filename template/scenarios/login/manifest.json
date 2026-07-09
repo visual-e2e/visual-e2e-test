@@ -1,0 +1,7 @@
+{
+  "module": "login",
+  "description": "登录模块 — 模板示例，请按目标站点调整 variables 与验证步骤",
+  "scenarios": [
+    "login_success.json"
+  ]
+}

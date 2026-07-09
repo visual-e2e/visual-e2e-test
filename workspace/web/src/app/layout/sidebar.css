@@ -1,0 +1,146 @@
+.sidebar-product-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.sidebar-product-brand--collapsed {
+  justify-content: center;
+  padding: 14px 8px 10px;
+}
+
+.sidebar-product-logo {
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.sidebar-product-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sidebar-product-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1.3;
+}
+
+.sidebar-product-tagline {
+  display: block;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.sidebar-brand {
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.sidebar-brand--collapsed {
+  padding: 12px 8px 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar-project-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sidebar-project-trigger:hover {
+  background: #f0f5ff;
+  border-color: #d6e4ff;
+}
+
+.sidebar-project-trigger--collapsed {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+}
+
+.sidebar-project-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #e6f4ff;
+  color: #1677ff;
+  font-size: 16px;
+}
+
+.sidebar-project-trigger--collapsed .sidebar-project-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.sidebar-project-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sidebar-project-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1.3;
+}
+
+.sidebar-project-id {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.sidebar-project-chevron {
+  flex-shrink: 0;
+  color: #bfbfbf;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sidebar-project-option-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f1f1f;
+}
+
+.sidebar-project-option-id {
+  font-size: 11px;
+  color: #8c8c8c;
+  margin-top: 1px;
+}
+
+.sidebar-project-dropdown .ant-dropdown-menu {
+  min-width: 200px;
+}
+
+.sidebar-project-dropdown .ant-dropdown-menu-item {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}

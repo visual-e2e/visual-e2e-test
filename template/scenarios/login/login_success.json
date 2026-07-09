@@ -1,0 +1,57 @@
+{
+  "id": "login_success",
+  "name": "登录成功（模板）",
+  "module": "login",
+  "enabled": true,
+  "setup": {
+    "requiresLogin": false,
+    "entryRoute": ""
+  },
+  "steps": [
+    {
+      "stepId": "s1",
+      "type": "link",
+      "url": "{login_path}",
+      "desc": "打开登录页",
+      "params": {
+        "readySelectors": ["{login_username_selector}"],
+        "loadState": "networkidle"
+      }
+    },
+    {
+      "stepId": "s2",
+      "type": "input",
+      "selector": "{login_username_selector}",
+      "value": "{username}",
+      "params": { "clearBeforeInput": true },
+      "desc": "输入账号"
+    },
+    {
+      "stepId": "s3",
+      "type": "input",
+      "selector": "{login_password_selector}",
+      "value": "{password}",
+      "params": { "clearBeforeInput": true },
+      "desc": "输入密码"
+    },
+    {
+      "stepId": "s4",
+      "type": "click",
+      "selector": "{login_submit_selector}",
+      "desc": "点击登录"
+    },
+    {
+      "stepId": "s5",
+      "type": "ready",
+      "params": {
+        "readySelectors": ["{post_login_ready_selector}"]
+      },
+      "desc": "等待登录后页面就绪（请在 variables.json 配置 post_login_ready_selector）"
+    },
+    {
+      "stepId": "s6",
+      "type": "screenshot",
+      "desc": "登录后截图"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+.env
+projects/
+node_modules/
+dist/
+.venv/
+.playwright/
+*.log
+.DS_Store

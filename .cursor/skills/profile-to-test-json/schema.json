@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "E2E Test Profile",
+  "type": "object",
+  "required": ["module", "source", "generatedAt", "baseUrl", "pages", "stats"],
+  "properties": {
+    "module": { "type": "string" },
+    "source": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "baseUrl": { "type": "string" },
+    "routeParams": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "routes": { "type": "array", "items": { "type": "string" } },
+          "placeholder": { "type": "string" },
+          "example": { "type": ["string", "null"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "route", "urlTemplate", "operations"],
+        "properties": {
+          "id": { "type": "string" },
+          "route": { "type": "string" },
+          "urlTemplate": { "type": "string" },
+          "params": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "layoutComponent": { "type": ["string", "null"] },
+          "childRoutes": { "type": "array", "items": { "type": "string" } },
+          "operations": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/operation" }
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "operationsInPage": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["pages", "operations", "testable", "skipped"],
+      "properties": {
+        "pages": { "type": "integer" },
+        "operations": { "type": "integer" },
+        "testable": { "type": "integer" },
+        "skipped": { "type": "integer" }
+      }
+    },
+    "manualReview": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "definitions": {
+    "operation": {
+      "type": "object",
+      "required": ["id", "actionType", "testable"],
+      "properties": {
+        "id": { "type": "string" },
+        "sourceLine": { "type": ["integer", "null"] },
+        "component": { "type": "string" },
+        "element": { "type": "string" },
+        "actionType": {
+          "type": "string",
+          "enum": [
+            "click",
+            "dblclick",
+            "navigate",
+            "submit",
+            "menu_click",
+            "sidebar_click",
+            "row_click",
+            "event",
+            "keyboard",
+            "input_change"
+          ]
+        },
+        "label": { "type": ["string", "null"] },
+        "cssSelector": { "type": "string" },
+        "playwright": { "type": "string" },
+        "eventBinding": { "type": "string" },
+        "testable": { "type": "boolean" },
+        "skipReason": { "type": ["string", "null"] },
+        "needsManualStep": { "type": "boolean" },
+        "assertions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string" },
+              "value": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

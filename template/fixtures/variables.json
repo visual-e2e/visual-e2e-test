@@ -1,0 +1,10 @@
+{
+  "global": {},
+  "login": {
+    "login_path": "/signin",
+    "login_username_selector": "input[name=\"userAccount\"]",
+    "login_password_selector": "input[type=\"password\"]",
+    "login_submit_selector": "button:has-text(\"登录\")",
+    "post_login_ready_selector": "body"
+  }
+}

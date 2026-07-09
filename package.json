@@ -1,0 +1,27 @@
+{
+  "name": "visual-e2e-test",
+  "version": "1.0.0",
+  "description": "Visual workbench for JSON-driven E2E automated testing",
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/run-test.mjs",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test:all": "node scripts/run-test.mjs",
+    "workspace": "npm run workspace:server & npm run workspace:web",
+    "workspace:web": "npm run dev --prefix workspace/web",
+    "workspace:server": "npm run dev --prefix workspace/server",
+    "test:login": "node scripts/run-test.mjs",
+    "test:project": "node scripts/run-test.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.49.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

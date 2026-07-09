@@ -1,0 +1,12 @@
+---
+description: 确保在匹配任务时主动加载并使用项目技能。
+alwaysApply: true
+---
+
+# Skill 加载策略
+
+- 在执行较大任务前，先检查 `.cursor/skills/` 是否存在匹配 skill。
+- 若存在匹配 skill，先读取其 `SKILL.md` 并按指引执行。
+- 若有多个 skill 匹配，优先选择与请求最贴近的那个。
+- 若无匹配 skill，按常规流程处理任务。
+- 非必要情况下，不在对话中展开 skill 内部细节。

@@ -1,0 +1,73 @@
+{
+  "module": "approval",
+  "source": "产品画像/approval.md",
+  "generatedAt": "2026-06-05T12:00:00.000Z",
+  "baseUrl": "${BASE_URL}",
+  "routeParams": {
+    "templateId": {
+      "routes": ["/approval/summary/:templateId"],
+      "placeholder": ":templateId",
+      "example": null,
+      "note": "测试时替换为真实业务 id"
+    }
+  },
+  "pages": [
+    {
+      "id": "approval",
+      "route": "/approval",
+      "urlTemplate": "${BASE_URL}/approval",
+      "params": {},
+      "layoutComponent": "ApprovalNextComponent",
+      "childRoutes": [
+        "/approval/launch",
+        "/approval/summary",
+        "/approval/statistic"
+      ],
+      "operations": [
+        {
+          "id": "approval-5",
+          "sourceLine": 5,
+          "component": "TocComponent",
+          "element": "a",
+          "actionType": "navigate",
+          "label": "发起审批",
+          "cssSelector": "wt-toc a[thyMenuItem]",
+          "playwright": "locator('wt-toc').getByRole('link', { name: '发起审批' })",
+          "eventBinding": "routerLink→['/approval/launch']",
+          "testable": true,
+          "skipReason": null,
+          "needsManualStep": false,
+          "assertions": [
+            { "type": "url_contains", "value": "/approval/launch" },
+            { "type": "no_js_errors", "value": "" }
+          ]
+        },
+        {
+          "id": "approval-50",
+          "sourceLine": 50,
+          "component": "AddOrEditStatisticComponent",
+          "element": "button",
+          "actionType": "click",
+          "label": "取消",
+          "cssSelector": "wt-add-or-edit-statistic button",
+          "playwright": "locator('wt-add-or-edit-statistic').getByRole('button', { name: '取消' })",
+          "eventBinding": "click→cancel()",
+          "testable": true,
+          "skipReason": null,
+          "needsManualStep": false,
+          "assertions": []
+        }
+      ],
+      "stats": { "operationsInPage": 29 }
+    }
+  ],
+  "stats": {
+    "pages": 1,
+    "operations": 2,
+    "testable": 2,
+    "skipped": 0
+  },
+  "manualReview": [
+    "routeParams.templateId.example 需填真实测试 id"
+  ]
+}
