@@ -115,6 +115,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ module, file, content }),
     }),
+  deleteProfile: (module: string, file: string) =>
+    request<{ ok: boolean; deletedScenario: string | null }>(
+      `/api/profiles/${module}/${file}`,
+      { method: "DELETE" },
+    ),
   getProfileStatus: (module: string, file: string) =>
     request<{ converted: boolean; jsonPath: string | null; jsonExists: boolean; diverged: boolean }>(
       `/api/profiles/status?module=${encodeURIComponent(module)}&file=${encodeURIComponent(file)}`,

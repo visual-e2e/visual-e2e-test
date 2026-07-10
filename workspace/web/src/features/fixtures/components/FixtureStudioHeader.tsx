@@ -1,5 +1,5 @@
 import { Button, Space } from "antd";
-import { PlusOutlined, SaveOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, SaveOutlined, DeleteOutlined, CodeOutlined } from "@ant-design/icons";
 
 interface FixtureStudioHeaderProps {
   label: string;
@@ -9,10 +9,11 @@ interface FixtureStudioHeaderProps {
   onNew: () => void;
   onSave: () => void;
   onDelete: () => void;
+  onPreviewJson: () => void;
 }
 
 export function FixtureStudioHeader({
-  label, dirty, saving, canDelete, onNew, onSave, onDelete,
+  label, dirty, saving, canDelete, onNew, onSave, onDelete, onPreviewJson,
 }: FixtureStudioHeaderProps) {
   return (
     <div className="studio-header">
@@ -26,6 +27,7 @@ export function FixtureStudioHeader({
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={onSave}>
             保存{dirty ? " *" : ""}
           </Button>
+          <Button icon={<CodeOutlined />} onClick={onPreviewJson}>JSON 预览</Button>
           <Button danger icon={<DeleteOutlined />} disabled={!canDelete} onClick={onDelete}>
             删除
           </Button>

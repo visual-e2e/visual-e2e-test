@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import type { ProjectContext } from "../project-context.js";
 import { resolveWithin } from "../utils/path-security.js";
@@ -46,6 +46,14 @@ export class ProfileRepository {
     const abs = resolveWithin(join(this.project.profilesDir, module), filePath);
     if (!abs.endsWith(".md")) throw new Error("画像须为 .md 文件");
     writeFileSync(abs, content, "utf-8");
+  }
+
+  deleteProfile(module: string, filePath: string): void {
+    const abs = resolveWithin(join(this.project.profilesDir, module), filePath);
+    if (!abs.endsWith(".md") || !existsSync(abs)) {
+      throw new Error(`画像不存在: ${module}/${filePath}`);
+    }
+    unlinkSync(abs);
   }
 
   private walkMd(dir: string, module: string, out: ProfileSummary[]): void {

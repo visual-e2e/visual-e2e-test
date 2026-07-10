@@ -1,24 +1,26 @@
 import { Button, Dropdown, Space, type MenuProps } from "antd";
 import {
-  SaveOutlined, CheckOutlined, EyeOutlined, PlayCircleOutlined,
-  PlusOutlined, ImportOutlined,
+  SaveOutlined, CheckOutlined, PlayCircleOutlined,
+  PlusOutlined, ImportOutlined, CodeOutlined, DeleteOutlined,
 } from "@ant-design/icons";
 
 interface StudioHeaderProps {
   dirty: boolean;
   saving: boolean;
+  canDelete: boolean;
   onNewScenario: () => void;
   onImportProfile: () => void;
   onSave: () => void;
   onValidate: () => void;
-  onExpand: () => void;
+  onPreviewJson: () => void;
+  onDelete: () => void;
   onRunCurrent: () => void;
   onRunModule: () => void;
 }
 
 export function StudioHeader({
-  dirty, saving, onNewScenario, onImportProfile, onSave, onValidate, onExpand,
-  onRunCurrent, onRunModule,
+  dirty, saving, canDelete, onNewScenario, onImportProfile, onSave, onValidate,
+  onPreviewJson, onDelete, onRunCurrent, onRunModule,
 }: StudioHeaderProps) {
   const runItems: MenuProps["items"] = [
     { key: "current", label: "运行当前场景", onClick: onRunCurrent },
@@ -41,7 +43,10 @@ export function StudioHeader({
             保存{dirty ? " *" : ""}
           </Button>
           <Button icon={<CheckOutlined />} onClick={onValidate}>校验</Button>
-          <Button icon={<EyeOutlined />} onClick={onExpand}>展开预览</Button>
+          <Button icon={<CodeOutlined />} onClick={onPreviewJson}>JSON 预览</Button>
+          <Button danger icon={<DeleteOutlined />} disabled={!canDelete} onClick={onDelete}>
+            删除
+          </Button>
           <Dropdown menu={{ items: runItems }}>
             <Button icon={<PlayCircleOutlined />}>运行</Button>
           </Dropdown>

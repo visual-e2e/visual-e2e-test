@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ProjectContext } from "../project-context.js";
 import { ProfileRepository } from "../repositories/profile.repo.js";
+import { ScenarioRepository } from "../repositories/scenario.repo.js";
 import { loadProfileConverter } from "../adapters/profile-converter.js";
 import { isExtendsScenario, scenarioWriteSchema } from "../schemas/scenario.schema.js";
 import type { Step } from "../schemas/step.schema.js";
@@ -97,6 +98,17 @@ export class ProfileService {
       jsonExists,
       diverged,
     };
+  }
+
+  deleteProfile(module: string, file: string): { deletedScenario: string | null } {
+    const status = this.getStatus(module, file);
+    this.profileRepo.deleteProfile(module, file);
+
+    if (status.jsonExists && status.jsonPath) {
+      new ScenarioRepository(this.project).deleteScenario(module, status.jsonPath);
+      return { deletedScenario: status.jsonPath };
+    }
+    return { deletedScenario: null };
   }
 }
 

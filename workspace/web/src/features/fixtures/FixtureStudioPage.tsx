@@ -17,7 +17,7 @@ import { FixtureStudioHeader } from "./components/FixtureStudioHeader";
 import { StepTablePanel } from "../studio/components/StepTablePanel";
 import { StepDetailPanel } from "../studio/components/StepDetailPanel";
 import { StudioSection } from "../studio/components/StudioSection";
-import { JsonPreview } from "../../components/JsonPreview";
+import { JsonPreviewDrawer } from "../../components/JsonPreviewDrawer";
 import "../studio/studio.css";
 
 const { Sider, Content } = Layout;
@@ -52,6 +52,7 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
   const [draft, setDraft] = useState<MacroDraft | RuleDraft>(() => emptyDraft(kind));
   const [dirty, setDirty] = useState(false);
   const [selectedStepIndex, setSelectedStepIndex] = useState<number>();
+  const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
 
   const listQuery = useQuery({
     queryKey: [listKey, projectId],
@@ -201,6 +202,7 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
   const isStale = !isNew && !!activeId && draft.id !== activeId;
   const isLoadingFixture = !isNew && !!activeId && (fixtureQuery.isFetching || isStale);
   const savePath = `fixtures/${saveSubdir}/${draft.id || "new"}.json`;
+  const previewData = isRule ? ruleDraftToRaw(draft as RuleDraft) : macroDraftToRaw(draft);
   const macroIds = (macrosQuery.data ?? []).map((m) => m.id);
   const listSelectedId = isNew ? undefined : activeId;
 
@@ -225,6 +227,7 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
           onNew={handleNew}
           onSave={handleSave}
           onDelete={handleDelete}
+          onPreviewJson={() => setJsonPreviewOpen(true)}
         />
 
         <Content className="studio-main">
@@ -284,17 +287,6 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
                   fixtureParamNames={Object.keys(draft.params)}
                 />
               </StudioSection>
-
-              <StudioSection title="JSON 预览" variant="json" className="studio-grid__json">
-                <div className="studio-json-path">
-                  <strong>保存路径：</strong>{savePath}
-                </div>
-                <JsonPreview
-                  embedded
-                  data={isRule ? ruleDraftToRaw(draft as RuleDraft) : macroDraftToRaw(draft)}
-                  loading={isLoadingFixture}
-                />
-              </StudioSection>
               </div>
             </div>
           )}
@@ -304,6 +296,19 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
           <Spin style={{ position: "absolute", top: "50%", left: "50%" }} />
         )}
       </Layout>
+
+      <JsonPreviewDrawer
+        open={jsonPreviewOpen && hasEditor}
+        onClose={() => setJsonPreviewOpen(false)}
+        title={`JSON 预览: ${draft.id || `新建${label}`}`}
+        savePath={savePath}
+        mode="draft"
+        onModeChange={() => undefined}
+        draftData={previewData}
+        expandedData={undefined}
+        expandedAvailable={false}
+        loading={isLoadingFixture}
+      />
     </Layout>
   );
 }

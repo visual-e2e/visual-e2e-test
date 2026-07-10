@@ -51,6 +51,20 @@ export function registerProfileRoutes(app: FastifyInstance, _config: WorkspaceCo
     },
   );
 
+  app.delete<{ Params: { module: string; "*": string } }>(
+    "/api/profiles/:module/*",
+    async (req, reply) => {
+      try {
+        const result = new ProfileService(req.project).deleteProfile(req.params.module, req.params["*"]);
+        return { ok: true, ...result };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "未知错误";
+        const status = message.includes("不存在") ? 404 : 400;
+        return reply.status(status).send({ error: message });
+      }
+    },
+  );
+
   app.post<{ Body: { module: string; scenarioName?: string; force?: boolean } }>(
     "/api/profiles/sync-to-scenario",
     async (req, reply) => {

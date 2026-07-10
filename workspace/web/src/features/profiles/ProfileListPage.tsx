@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Typography, Table, Button, Space, Select, message, Modal, Alert, Drawer, Input, Spin,
 } from "antd";
-import { EditOutlined, SyncOutlined, SaveOutlined } from "@ant-design/icons";
+import { EditOutlined, SyncOutlined, SaveOutlined, DeleteOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { useProject } from "../../context/ProjectContext";
 import { ScrollPane } from "../../components/layout/ScrollPane";
@@ -83,6 +83,44 @@ export function ProfileListPage() {
     onError: (e: Error) => message.error(e.message),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (row: { module: string; file: string }) => api.deleteProfile(row.module, row.file),
+    onSuccess: (res, row) => {
+      if (res.deletedScenario) {
+        message.success(`已删除画像及关联场景 ${res.deletedScenario}`);
+      } else {
+        message.success("已删除");
+      }
+      if (editing?.module === row.module && editing?.file === row.file) {
+        setEditing(null);
+        setMdContent("");
+        setDirty(false);
+      }
+      qc.invalidateQueries({ queryKey: ["profiles", projectId] });
+      qc.invalidateQueries({ queryKey: ["scenarios", projectId] });
+    },
+    onError: (e: Error) => message.error(e.message),
+  });
+
+  const confirmDelete = async (row: { module: string; file: string; title?: string }) => {
+    let content = "将永久删除画像 Markdown 文件，不可恢复。";
+    try {
+      const status = await api.getProfileStatus(row.module, row.file);
+      if (status.jsonExists && status.jsonPath) {
+        content += ` 关联的场景 JSON（${status.jsonPath}）也将一并删除。`;
+      }
+    } catch {
+      // 忽略状态查询失败，仍允许删除
+    }
+    Modal.confirm({
+      title: `确认删除 ${row.title || row.file}？`,
+      content,
+      okText: "删除",
+      okButtonProps: { danger: true },
+      onOk: () => deleteMut.mutateAsync(row),
+    });
+  };
+
   return (
     <ScrollPane>
       <Typography.Title level={4}>产品画像</Typography.Title>
@@ -148,6 +186,15 @@ export function ProfileListPage() {
                 >
                   同步 JSON
                 </Button>
+                <Button
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={deleteMut.isPending}
+                  onClick={() => confirmDelete(row)}
+                >
+                  删除
+                </Button>
               </Space>
             ),
           },
@@ -165,18 +212,28 @@ export function ProfileListPage() {
               保存
             </Button>
             {editing && (
-              <Button
-                icon={<SyncOutlined />}
-                onClick={() =>
-                  syncMut.mutate({
-                    module: editing.module,
-                    name: editing.file.replace(/\.md$/, "").split("/").pop(),
-                    force: true,
-                  })
-                }
-              >
-                同步 JSON
-              </Button>
+              <>
+                <Button
+                  icon={<SyncOutlined />}
+                  onClick={() =>
+                    syncMut.mutate({
+                      module: editing.module,
+                      name: editing.file.replace(/\.md$/, "").split("/").pop(),
+                      force: true,
+                    })
+                  }
+                >
+                  同步 JSON
+                </Button>
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={deleteMut.isPending}
+                  onClick={() => confirmDelete({ ...editing, title: editing.file })}
+                >
+                  删除
+                </Button>
+              </>
             )}
           </Space>
         }

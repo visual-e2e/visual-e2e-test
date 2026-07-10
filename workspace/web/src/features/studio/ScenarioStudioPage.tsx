@@ -14,7 +14,7 @@ import { ExtendsStepsPanel } from "./components/ExtendsStepsPanel";
 import { StudioHeader } from "./components/StudioHeader";
 import { StudioSection } from "./components/StudioSection";
 import { ImportProfileModal } from "./components/ImportProfileModal";
-import { JsonPreview } from "../../components/JsonPreview";
+import { JsonPreviewDrawer, type JsonPreviewMode } from "../../components/JsonPreviewDrawer";
 import "./studio.css";
 
 const { Sider, Content } = Layout;
@@ -33,7 +33,8 @@ export function ScenarioStudioPage() {
   const [dirty, setDirty] = useState(false);
   const [selectedStepIndex, setSelectedStepIndex] = useState<number>();
   const [expanded, setExpanded] = useState<unknown>();
-  const [showExpanded, setShowExpanded] = useState(false);
+  const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
+  const [previewMode, setPreviewMode] = useState<JsonPreviewMode>("draft");
   const [issues, setIssues] = useState<{ level: string; message: string }[]>([]);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -64,7 +65,7 @@ export function ScenarioStudioPage() {
       setDraft(next);
       setFile(scenarioFile!);
       setDirty(false);
-      setShowExpanded(false);
+      setPreviewMode("draft");
       setSelectedStepIndex(next.mode === "extends" || next.steps.length > 0 ? 0 : undefined);
     }
   }, [scenarioQuery.data, activeModule, scenarioFile]);
@@ -100,6 +101,24 @@ export function ScenarioStudioPage() {
     onError: (e: Error) => message.error(e.message),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: () => api.deleteScenario(activeModule, scenarioFile!),
+    onSuccess: () => {
+      message.success("已删除");
+      setScenarioFile(undefined);
+      setIsNew(false);
+      setDraft(emptyScenario(activeModule));
+      setFile("");
+      setDirty(false);
+      setSelectedStepIndex(undefined);
+      setExpanded(undefined);
+      setPreviewMode("draft");
+      setJsonPreviewOpen(false);
+      qc.invalidateQueries({ queryKey: ["scenarios", projectId, activeModule] });
+    },
+    onError: (e: Error) => message.error(e.message),
+  });
+
   const validateMut = useMutation({
     mutationFn: () => api.validateScenario(draft),
     onSuccess: (res) => {
@@ -112,7 +131,7 @@ export function ScenarioStudioPage() {
     mutationFn: () => api.expandScenario(draft),
     onSuccess: (res) => {
       setExpanded(res.expanded);
-      setShowExpanded(true);
+      setPreviewMode("expanded");
     },
   });
 
@@ -138,7 +157,7 @@ export function ScenarioStudioPage() {
     setFile("new_scenario.json");
     setDirty(true);
     setSelectedStepIndex(undefined);
-    setShowExpanded(false);
+    setPreviewMode("draft");
   };
 
   const handleImport = (imported: ScenarioDraft, suggestedFile: string) => {
@@ -148,12 +167,23 @@ export function ScenarioStudioPage() {
     setFile(suggestedFile);
     setDirty(true);
     setSelectedStepIndex(imported.mode === "extends" || imported.steps.length > 0 ? 0 : undefined);
-    setShowExpanded(false);
+    setPreviewMode("draft");
   };
 
   const handleSave = () => {
     if (dirty) saveScenarioMut.mutate();
     else message.info("无修改");
+  };
+
+  const handleDelete = () => {
+    if (!scenarioFile || isNew) return;
+    Modal.confirm({
+      title: `确认删除 ${draft.name || draft.id || scenarioFile}？`,
+      content: "将永久删除场景 JSON 文件，不可恢复。",
+      okText: "删除",
+      okButtonProps: { danger: true },
+      onOk: () => deleteMut.mutateAsync(),
+    });
   };
 
   const handleRun = (scope: "current" | "module") => {
@@ -226,11 +256,16 @@ export function ScenarioStudioPage() {
         <StudioHeader
           dirty={dirty}
           saving={saveScenarioMut.isPending}
+          canDelete={!!scenarioFile && !isNew}
           onNewScenario={handleNewScenario}
           onImportProfile={() => setImportOpen(true)}
           onSave={handleSave}
           onValidate={() => validateMut.mutate()}
-          onExpand={() => expandMut.mutate()}
+          onPreviewJson={() => {
+            setPreviewMode("draft");
+            setJsonPreviewOpen(true);
+          }}
+          onDelete={handleDelete}
           onRunCurrent={() => handleRun("current")}
           onRunModule={() => handleRun("module")}
         />
@@ -328,32 +363,6 @@ export function ScenarioStudioPage() {
                   }
                 />
               </StudioSection>
-
-              <StudioSection
-                title="JSON 预览"
-                variant="json"
-                className="studio-grid__json"
-                extra={
-                  showExpanded ? (
-                    <Button type="link" size="small" onClick={() => setShowExpanded(false)}>
-                      看草稿
-                    </Button>
-                  ) : expanded ? (
-                    <Button type="link" size="small" onClick={() => setShowExpanded(true)}>
-                      看展开
-                    </Button>
-                  ) : null
-                }
-              >
-                <div className="studio-json-path">
-                  <strong>保存路径：</strong>{savePath}
-                </div>
-                <JsonPreview
-                  embedded
-                  data={showExpanded ? expanded : draft}
-                  loading={expandMut.isPending}
-                />
-              </StudioSection>
               </div>
             </div>
           )}
@@ -361,6 +370,21 @@ export function ScenarioStudioPage() {
 
         {scenarioQuery.isLoading && <Spin style={{ position: "absolute", top: "50%", left: "50%" }} />}
       </Layout>
+
+      <JsonPreviewDrawer
+        open={jsonPreviewOpen && hasEditor}
+        onClose={() => setJsonPreviewOpen(false)}
+        title={`JSON 预览: ${draft.name || draft.id || file || "场景"}`}
+        savePath={savePath}
+        mode={previewMode}
+        onModeChange={setPreviewMode}
+        draftData={draft}
+        expandedData={expanded}
+        expandedAvailable={expanded != null}
+        loading={expandMut.isPending}
+        onExpand={() => expandMut.mutate()}
+        expandLoading={expandMut.isPending}
+      />
 
       <ImportProfileModal
         open={importOpen}
