@@ -53,9 +53,12 @@ function cleanStaleDmgTempFiles(rustTarget) {
   }
 }
 
-function prepareMacDmgBuildEnv() {
-  // Tauri 在 CI=true 时为 bundle_dmg.sh 传入 --skip-jenkins，跳过 Finder AppleScript
-  process.env.CI = "true";
+function warnIfMacRosettaBuild() {
+  if (process.arch === "x64") {
+    console.warn(
+      "当前 Node 运行于 Rosetta (x64)，DMG 将命名为 _x64。建议在原生终端执行: arch -arm64 npm run tauri:build:mac",
+    );
+  }
 }
 
 function cleanStaleBundleResources(rustTarget) {
@@ -189,6 +192,27 @@ async function downloadNodeSidecars(target) {
   if ((await run("node", args, label)) !== 0) process.exit(1);
 }
 
+async function runTauriBuild(step) {
+  const isMacNative = process.platform === "darwin" && !step.rustTarget;
+
+  if (isMacNative) {
+    const appCode = await run(
+      "npx",
+      ["tauri", "build", "--bundles", "app", ...step.tauriArgs],
+      `${step.label}（.app）`,
+    );
+    if (appCode !== 0) return appCode;
+
+    return run(
+      "npx",
+      ["tauri", "build", "--bundles", "dmg", ...step.tauriArgs],
+      `${step.label}（.dmg）`,
+    );
+  }
+
+  return run("npx", ["tauri", "build", ...step.tauriArgs], step.label);
+}
+
 const target = parseTarget();
 const plan = buildPlan(target);
 
@@ -207,10 +231,11 @@ for (const step of plan) {
   cleanStaleBundleResources(step.rustTarget);
   if (process.platform === "darwin" && !step.rustTarget) {
     cleanStaleDmgTempFiles(step.rustTarget);
-    prepareMacDmgBuildEnv();
+    delete process.env.CI;
+    warnIfMacRosettaBuild();
   }
 
-  const code = await run("npx", ["tauri", "build", ...step.tauriArgs], step.label);
+  const code = await runTauriBuild(step);
 
   let copied = [];
   let subdir = "";
@@ -228,6 +253,11 @@ for (const step of plan) {
   if (code !== 0) {
     console.warn("\n打包未完全成功，已复制的产物仍保留在 build/");
     for (const name of copied) console.warn(`  ${name}`);
+    if (process.platform === "darwin" && !step.rustTarget && !copied.some((n) => n.endsWith(".dmg"))) {
+      console.warn(
+        "DMG 生成失败时，请在 Terminal.app 中重试，并授予终端「控制 Finder」权限（系统设置 → 隐私与安全性 → 自动化）",
+      );
+    }
     if (copied.length === 0) process.exit(code);
   }
 }
