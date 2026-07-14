@@ -1,4 +1,6 @@
 # Cursor / Xcode git 不加载 shell 配置，需手动补 PATH
+# npm run 会设置 npm_config_prefix，与 nvm 冲突
+unset npm_config_prefix
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
   . "$HOME/.nvm/nvm.sh"
 fi

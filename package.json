@@ -39,6 +39,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
+    "@inquirer/prompts": "^8.5.2",
     "@types/node": "^20.11.0",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
