@@ -211,7 +211,7 @@ export function reportUrl(job: RunJob): string | undefined {
 }
 
 export function canOpenReport(job: RunJob): boolean {
-  return job.status === "passed" && !!reportUrl(job);
+  return job.status !== "running" && !!job.reportFile;
 }
 
 export interface ProjectMeta {

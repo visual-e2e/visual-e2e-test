@@ -4,7 +4,7 @@ import { app, dialog, ipcMain, type BrowserWindow } from "electron";
 import { createReportWindow } from "../windows/create-window.js";
 
 export interface IpcContext {
-  reportWindows: Set<BrowserWindow>;
+  reportWindow: BrowserWindow | null;
 }
 
 export function registerIpcHandlers(ctx: IpcContext): void {
@@ -20,9 +20,17 @@ export function registerIpcHandlers(ctx: IpcContext): void {
   });
 
   ipcMain.handle("open-report", async (_event, url: string) => {
+    const existing = ctx.reportWindow;
+    if (existing && !existing.isDestroyed()) {
+      await existing.loadURL(url);
+      if (existing.isMinimized()) existing.restore();
+      existing.focus();
+      return;
+    }
+
     const win = createReportWindow(url, () => {
-      ctx.reportWindows.delete(win);
+      if (ctx.reportWindow === win) ctx.reportWindow = null;
     });
-    ctx.reportWindows.add(win);
+    ctx.reportWindow = win;
   });
 }

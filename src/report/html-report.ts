@@ -212,8 +212,10 @@ function toReportRelPath(runDir: string, filePath: string): string {
   return relative(runDir, filePath).split("\\").join("/");
 }
 
+const REPORT_VIEW_TARGET = "visual-e2e-report";
+
 function artifactLink(href: string, label: string): string {
-  return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" target="${REPORT_VIEW_TARGET}">${escapeHtml(label)}</a>`;
 }
 
 function buildScenarioLogLink(runDir: string, result: ScenarioResult): string {

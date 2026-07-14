@@ -19,6 +19,10 @@ export function createReportWindow(
 ): BrowserWindow {
   const win = new BrowserWindow(reportWindowOptions());
   attachEditSupport(win.webContents);
+  win.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
+    void win.loadURL(targetUrl);
+    return { action: "deny" };
+  });
   win.on("closed", () => onClosed?.(win));
   void win.loadURL(url);
   return win;

@@ -155,12 +155,12 @@ export function registerRunRoutes(
       }
       const ext = extname(subPath).toLowerCase();
       const types: Record<string, string> = {
-        ".html": "text/html",
-        ".json": "application/json",
+        ".html": "text/html; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
         ".png": "image/png",
         ".jpg": "image/jpeg",
         ".webm": "video/webm",
-        ".log": "text/plain",
+        ".log": "text/plain; charset=utf-8",
       };
       return reply.type(types[ext] ?? "application/octet-stream").send(readFileSync(filePath));
     },

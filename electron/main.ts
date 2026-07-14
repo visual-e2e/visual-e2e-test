@@ -11,10 +11,10 @@ const isDev = !app.isPackaged;
 let mainWindow: BrowserWindow | null = null;
 let targetUrl = "";
 let storageLayout: StorageLayout | null = null;
-const reportWindows = new Set<BrowserWindow>();
+const ipcContext = { reportWindow: null as BrowserWindow | null };
 
 async function bootstrap(): Promise<void> {
-  registerIpcHandlers({ reportWindows });
+  registerIpcHandlers(ipcContext);
 
   const { layout, baseUrl } = await startSidecar(isDev, process.resourcesPath, app.getPath("userData"));
   storageLayout = layout;
@@ -34,9 +34,8 @@ app.whenReady().then(bootstrap).catch((err) => {
 
 app.on("before-quit", () => {
   stopSidecar();
-  for (const win of reportWindows) {
-    if (!win.isDestroyed()) win.destroy();
-  }
+  const win = ipcContext.reportWindow;
+  if (win && !win.isDestroyed()) win.destroy();
 });
 
 app.on("window-all-closed", () => {
