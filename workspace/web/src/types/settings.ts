@@ -3,7 +3,6 @@ export interface SettingsDraft {
     headless: boolean;
     slowMo: number;
     devtools: boolean;
-    channel: string;
     timeout: number;
     actionTimeout: number;
     navigationWaitUntil: "load" | "domcontentloaded" | "networkidle" | "commit";
@@ -34,7 +33,6 @@ export function defaultSettings(): SettingsDraft {
       headless: false,
       slowMo: 0,
       devtools: false,
-      channel: "",
       timeout: 30000,
       actionTimeout: 10000,
       navigationWaitUntil: "load",

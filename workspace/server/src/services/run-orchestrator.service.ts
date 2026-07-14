@@ -1,6 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readdirSync, rmSync, statSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import {
+  appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
+} from "node:fs";
+import { basename, dirname, join } from "node:path";
 import type { WorkspaceConfig } from "../config.js";
 import type { ProjectContext } from "../project-context.js";
 import { checkProjectEnv, resolveProjectContext } from "../project-context.js";
@@ -118,29 +120,76 @@ export class RunOrchestratorService {
   listJobs(projectId: string): RunJob[] {
     this.reconcileStaleRunningJobs();
     this.reconcileMemoryJobsWithDisk(projectId);
+    this.reconcileStaleDiskRuns(projectId);
     this.pruneFinishedJobs();
 
     const diskRuns = this.listDiskRuns(projectId);
+    const diskIds = new Set(diskRuns.map((d) => d.jobId));
     const running = [...activeJobs.values()]
       .filter((j) => j.projectId === projectId)
-      .filter((j) => !this.hasMatchingDiskRun(j, diskRuns));
+      .filter((j) => !this.hasMatchingDiskRun(j, diskRuns))
+      .filter((j) => {
+        const diskId = j.runDir ? basename(j.runDir) : jobAliases.get(j.jobId);
+        return !(diskId && diskIds.has(diskId));
+      });
 
     return [...running, ...diskRuns]
       .map((j) => this.withLiveState(j))
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
   }
 
-  cancelJob(jobId: string): boolean {
-    const memoryJobId = this.resolveLiveJobId(jobId);
-    if (!memoryJobId) return false;
-    const proc = this.processes.get(memoryJobId);
-    const job = activeJobs.get(memoryJobId);
-    if (!proc || !job || job.status !== "running") return false;
-    this.killRunProcess(proc);
-    job.status = "cancelled";
-    job.finishedAt = new Date().toISOString();
-    job.logs.push(`[system] 任务已终止 ${new Date().toISOString()}`);
-    return true;
+  cancelJob(jobId: string, projectId?: string): boolean {
+    this.reconcileStaleRunningJobs();
+    if (projectId) {
+      this.reconcileMemoryJobsWithDisk(projectId);
+    }
+
+    const memIds = this.collectMemoryJobIds(jobId);
+    for (const memId of memIds) {
+      const job = activeJobs.get(memId);
+      if (job?.status === "running" || this.isLiveRunning(memId)) {
+        const proc = this.processes.get(memId);
+        if (proc) this.killRunProcess(proc);
+        if (job) {
+          job.status = "cancelled";
+          job.finishedAt = new Date().toISOString();
+          job.logs.push(`[system] 任务已终止 ${new Date().toISOString()}`);
+        }
+        this.processes.delete(memId);
+        if (projectId) {
+          const diskId = jobAliases.get(memId);
+          if (diskId) {
+            const runDir = this.resolveRunDir(projectId, diskId);
+            if (runDir) this.markDiskRunCancelled(runDir);
+            this.cleanupRunReferences(diskId);
+          }
+        }
+        jobAliases.delete(memId);
+        return true;
+      }
+      this.cleanupZombieProcess(memId);
+    }
+
+    if (!projectId) return false;
+
+    for (const diskId of this.collectDiskRunIds(jobId)) {
+      const runDir = this.resolveRunDir(projectId, diskId);
+      if (!runDir) continue;
+      const diskJob = this.diskRunFromDir(runDir, projectId);
+      if (diskJob.status !== "running") continue;
+      this.markDiskRunCancelled(runDir);
+      this.cleanupRunReferences(diskId);
+      return true;
+    }
+
+    const known = this.getJob(jobId, projectId);
+    if (known?.status === "running" && known.runDir) {
+      this.markDiskRunCancelled(known.runDir);
+      this.cleanupRunReferences(basename(known.runDir));
+      return true;
+    }
+
+    return false;
   }
 
   resolveRunArtifactPath(projectId: string, runId: string, subPath: string): string | undefined {
@@ -163,26 +212,64 @@ export class RunOrchestratorService {
     const deleted: string[] = [];
     const skipped: Array<{ runId: string; reason: string }> = [];
 
-    for (const runId of runIds) {
-      if (!/^\d{14}$/.test(runId)) {
-        skipped.push({ runId, reason: "invalid_run_id" });
-        continue;
-      }
-      if (this.isRunLive(projectId, runId)) {
-        skipped.push({ runId, reason: "running" });
-        continue;
-      }
-      const runDir = this.resolveRunDir(projectId, runId);
-      if (!runDir) {
-        skipped.push({ runId, reason: "not_found" });
-        continue;
-      }
-      rmSync(runDir, { recursive: true, force: true });
-      this.cleanupRunReferences(runId);
-      deleted.push(runId);
+    for (const id of runIds) {
+      const result = this.deleteOneRun(projectId, id);
+      if (result.ok) deleted.push(id);
+      else skipped.push({ runId: id, reason: result.reason });
     }
 
     return { deleted, skipped };
+  }
+
+  private deleteOneRun(
+    projectId: string,
+    id: string,
+  ): { ok: true } | { ok: false; reason: string } {
+    if (/^\d{14}$/.test(id)) {
+      if (this.isRunLive(projectId, id)) {
+        return { ok: false, reason: "running" };
+      }
+      const runDir = this.resolveRunDir(projectId, id);
+      if (!runDir) {
+        return { ok: false, reason: "not_found" };
+      }
+      rmSync(runDir, { recursive: true, force: true });
+      this.cleanupRunReferences(id);
+      return { ok: true };
+    }
+
+    const memoryJobId = this.resolveMemoryJobId(id);
+    if (memoryJobId) {
+      const job = activeJobs.get(memoryJobId);
+      if (!job || job.projectId !== projectId) {
+        return { ok: false, reason: "not_found" };
+      }
+      if (job.status === "running" || this.isLiveRunning(memoryJobId)) {
+        return { ok: false, reason: "running" };
+      }
+      const diskId = job.runDir ? basename(job.runDir) : jobAliases.get(memoryJobId);
+      if (diskId && /^\d{14}$/.test(diskId)) {
+        const runDir = this.resolveRunDir(projectId, diskId);
+        if (runDir) {
+          rmSync(runDir, { recursive: true, force: true });
+          this.cleanupRunReferences(diskId);
+        }
+      }
+      activeJobs.delete(memoryJobId);
+      jobAliases.delete(memoryJobId);
+      this.processes.delete(memoryJobId);
+      return { ok: true };
+    }
+
+    return { ok: false, reason: "not_found" };
+  }
+
+  private resolveMemoryJobId(id: string): string | undefined {
+    if (activeJobs.has(id)) return id;
+    for (const [memId, alias] of jobAliases) {
+      if (alias === id) return memId;
+    }
+    return undefined;
   }
 
   resolveRunArchiveEntries(
@@ -221,7 +308,74 @@ export class RunOrchestratorService {
       const diskId = job.runDir ? basename(job.runDir) : jobAliases.get(memoryJobId);
       if (diskId === runId || job.jobId === runId) return true;
     }
+    for (const [memId, alias] of jobAliases) {
+      if (alias !== runId) continue;
+      if (this.isLiveRunning(memId)) return true;
+    }
     return false;
+  }
+
+  private collectMemoryJobIds(jobId: string): Set<string> {
+    const ids = new Set<string>();
+    if (activeJobs.has(jobId)) ids.add(jobId);
+    const live = this.resolveLiveJobId(jobId);
+    if (live) ids.add(live);
+    for (const [memId, alias] of jobAliases) {
+      if (memId === jobId || alias === jobId) ids.add(memId);
+    }
+    return ids;
+  }
+
+  private collectDiskRunIds(jobId: string): Set<string> {
+    const ids = new Set<string>();
+    const resolved = jobAliases.get(jobId) ?? jobId;
+    if (/^\d{14}$/.test(resolved)) ids.add(resolved);
+    if (/^\d{14}$/.test(jobId)) ids.add(jobId);
+    return ids;
+  }
+
+  private cleanupZombieProcess(memId: string): void {
+    const proc = this.processes.get(memId);
+    if (!proc) return;
+    this.killRunProcess(proc);
+    this.processes.delete(memId);
+    jobAliases.delete(memId);
+  }
+
+  /** 磁盘 run 日志仍为 running 但无 live 进程时，标记为 error 以停止列表轮询 */
+  private reconcileStaleDiskRuns(projectId: string): void {
+    const base = this.runsBase(projectId);
+    if (!existsSync(base)) return;
+    for (const name of readdirSync(base)) {
+      if (!/^\d{14}$/.test(name)) continue;
+      const runDir = join(base, name);
+      if (!statSync(runDir).isDirectory()) continue;
+      const job = this.diskRunFromDir(runDir, projectId);
+      if (job.status !== "running") continue;
+      if (this.isRunLive(projectId, name)) continue;
+      this.markDiskRunStale(runDir);
+    }
+  }
+
+  private appendRunLogLine(runDir: string, line: string): void {
+    const logPath = join(runDir, "logs", "run.log");
+    if (existsSync(logPath)) {
+      appendFileSync(logPath, line);
+    } else {
+      mkdirSync(dirname(logPath), { recursive: true });
+      writeFileSync(logPath, line);
+    }
+  }
+
+  private markDiskRunCancelled(runDir: string): void {
+    this.appendRunLogLine(runDir, `${new Date().toISOString()} [system] 任务已手动终止\n`);
+  }
+
+  private markDiskRunStale(runDir: string): void {
+    const marker = "[system] 运行异常中断";
+    const logPath = join(runDir, "logs", "run.log");
+    if (existsSync(logPath) && readFileSync(logPath, "utf-8").includes(marker)) return;
+    this.appendRunLogLine(runDir, `${new Date().toISOString()} ${marker}（进程已结束或无响应）\n`);
   }
 
   private cleanupRunReferences(runId: string): void {
@@ -321,7 +475,7 @@ export class RunOrchestratorService {
     }, 1500);
   }
 
-  /** 磁盘 run 已落盘时建立 alias，列表去重；内存 job 在匹配后移除 */
+  /** 磁盘 run 已落盘时建立 alias；列表通过 hasMatchingDiskRun 去重，内存 job 保留至进程结束 */
   private reconcileMemoryJobsWithDisk(projectId: string): void {
     const diskRuns = this.listDiskRuns(projectId);
     for (const [jobId, job] of [...activeJobs.entries()]) {
@@ -335,7 +489,6 @@ export class RunOrchestratorService {
             return Math.abs(diskStart - memStart) < 120_000;
           })?.jobId;
       if (runId) jobAliases.set(jobId, runId);
-      activeJobs.delete(jobId);
     }
   }
 
@@ -349,8 +502,10 @@ export class RunOrchestratorService {
 
   private isLiveRunning(memoryJobId: string): boolean {
     const proc = this.processes.get(memoryJobId);
+    if (!proc || proc.exitCode !== null || proc.signalCode) return false;
     const job = activeJobs.get(memoryJobId);
-    return !!(proc && job?.status === "running" && proc.exitCode === null);
+    if (job && job.status !== "running" && job.status !== "cancelled") return false;
+    return true;
   }
 
   private withLiveState(job: RunJob): RunJob {
@@ -596,6 +751,10 @@ function parseRunLog(logPath: string): {
     const failed = parseInt(summary[3], 10);
     const errors = parseInt(summary[4] ?? "0", 10);
     status = failed === 0 && errors === 0 ? "passed" : "failed";
+  } else if (content.includes("任务已手动终止") || content.includes("[system] 任务已终止")) {
+    status = "cancelled";
+  } else if (content.includes("[system] 运行异常中断")) {
+    status = "error";
   } else if (content.includes("测试运行开始")) {
     status = "running";
   }

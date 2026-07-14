@@ -141,17 +141,6 @@ export function SettingsPage() {
               </Form.Item>
             </Col>
             <Col span={6}>
-              <Form.Item label={SETTINGS_FIELDS.channel.label} tooltip={SETTINGS_FIELDS.channel.tooltip}>
-                <Input
-                  value={draft.browser.channel}
-                  placeholder="留空"
-                  onChange={(e) => patchBrowser({ channel: e.target.value })}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col span={6}>
               <Form.Item label={SETTINGS_FIELDS.timeout.label} tooltip={SETTINGS_FIELDS.timeout.tooltip}>
                 <InputNumber
                   min={1}
@@ -162,6 +151,8 @@ export function SettingsPage() {
                 />
               </Form.Item>
             </Col>
+          </Row>
+          <Row gutter={16}>
             <Col span={6}>
               <Form.Item label={SETTINGS_FIELDS.actionTimeout.label} tooltip={SETTINGS_FIELDS.actionTimeout.tooltip}>
                 <InputNumber

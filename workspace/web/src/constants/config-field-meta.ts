@@ -9,7 +9,6 @@ export const SETTINGS_FIELDS = {
   headless: { label: "无头模式", tooltip: "开启后不显示浏览器窗口；运行中心发起运行时可临时覆盖 HEADLESS" },
   slowMo: { label: "慢动作 (ms)", tooltip: "每个操作之间的延迟，便于调试观察" },
   devtools: { label: "开发者工具", tooltip: "启动时自动打开 Chromium DevTools" },
-  channel: { label: "浏览器渠道", tooltip: "如 chrome、msedge；留空使用默认 Chromium" },
   timeout: { label: "浏览器超时 (ms)", tooltip: "浏览器级默认超时" },
   actionTimeout: { label: "操作超时 (ms)", tooltip: "单次 click/input 等操作的默认超时" },
   navigationWaitUntil: {

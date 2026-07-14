@@ -210,6 +210,10 @@ export function reportUrl(job: RunJob): string | undefined {
   return `/api/runs/artifacts/${projectId}/${runId}/report.html`;
 }
 
+export function canOpenReport(job: RunJob): boolean {
+  return job.status === "passed" && !!reportUrl(job);
+}
+
 export interface ProjectMeta {
   id: string;
   name: string;

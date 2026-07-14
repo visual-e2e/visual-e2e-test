@@ -4,7 +4,6 @@
     "headless": false,
     "slowMo": 0,
     "devtools": false,
-    "channel": "",
     "timeout": 30000,
     "actionTimeout": 10000,
     "navigationWaitUntil": "load",

@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+} from "node:fs";
 import { join } from "node:path";
 import { REPO_ROOT } from "../dev/env.mjs";
 import { buildOutputSubdir, nodePlatformForMacArch } from "./platform.mjs";
@@ -9,6 +16,10 @@ import "./sync-version.mjs";
 const VALID_TARGETS = new Set(["mac", "win", "all"]);
 const VALID_MAC_ARCHS = new Set(["arm64", "x64"]);
 const NODE_RESOURCES = join(REPO_ROOT, "electron/resources/node");
+/** Project-managed browsers (do not prune). */
+const PLAYWRIGHT_SOURCE = join(REPO_ROOT, "playwright-browsers");
+/** Pack staging: only the current platform is copied here for extraResources. */
+const PLAYWRIGHT_STAGE = join(REPO_ROOT, "electron/resources/playwright-browsers");
 
 const MAC_ARCH_FLAGS = {
   arm64: "--arm64",
@@ -87,15 +98,34 @@ async function downloadNodePlatform(nodePlatform) {
   if (code !== 0) process.exit(1);
 }
 
-function pruneNodeResources(nodePlatform) {
-  if (!existsSync(NODE_RESOURCES)) return;
-  for (const name of readdirSync(NODE_RESOURCES)) {
-    if (name === nodePlatform) continue;
-    rmSync(join(NODE_RESOURCES, name), { recursive: true, force: true });
+function chromiumReady(platformDir) {
+  if (!existsSync(platformDir)) return false;
+  return readdirSync(platformDir).some((name) => name.startsWith("chromium-"));
+}
+
+function stagePlaywrightBrowsers(nodePlatform) {
+  const src = join(PLAYWRIGHT_SOURCE, nodePlatform);
+  if (!chromiumReady(src)) {
+    throw new Error(
+      `Missing Playwright browsers: ${src}\n` +
+        `Prepare under playwright-browsers/ (see README), then retry.`,
+    );
   }
-  const marker = join(NODE_RESOURCES, nodePlatform);
+  rmSync(PLAYWRIGHT_STAGE, { recursive: true, force: true });
+  mkdirSync(PLAYWRIGHT_STAGE, { recursive: true });
+  cpSync(src, join(PLAYWRIGHT_STAGE, nodePlatform), { recursive: true });
+  console.log(`Staged Playwright browsers ${nodePlatform} → electron/resources/playwright-browsers/`);
+}
+
+function prunePlatformResources(root, nodePlatform, label) {
+  if (!existsSync(root)) return;
+  for (const name of readdirSync(root)) {
+    if (name === nodePlatform) continue;
+    rmSync(join(root, name), { recursive: true, force: true });
+  }
+  const marker = join(root, nodePlatform);
   if (!existsSync(marker)) {
-    throw new Error(`Node sidecar missing after prune: ${marker}`);
+    throw new Error(`${label} missing after prune: ${marker}`);
   }
 }
 
@@ -211,7 +241,8 @@ if ((await run("npm", ["run", "build:client"], "build:client")) !== 0) process.e
 const results = [];
 for (const step of plan) {
   await downloadNodePlatform(step.nodePlatform);
-  pruneNodeResources(step.nodePlatform);
+  prunePlatformResources(NODE_RESOURCES, step.nodePlatform, "Node sidecar");
+  stagePlaywrightBrowsers(step.nodePlatform);
 
   const outDir = join(REPO_ROOT, "build", step.subdir);
   const code = await run(

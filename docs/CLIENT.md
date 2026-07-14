@@ -86,34 +86,38 @@ open ~/Library/Application\ Support/Visual\ E2E\ Test/Storage
 
 ## 打包
 
-在 **macOS 开发机**上可交叉编译 Windows 安装包，无需切换到 Windows 电脑。
+安装包在 **本机 macOS** 构建（含 `playwright-browsers/`），不由 CI 编译。
 
 ```bash
-npm run electron:build:all          # macOS 推荐：一次打出下面三个目录
-npm run electron:build:mac:arm64    # 仅 Apple Silicon → build/macos-arm64/
-npm run electron:build:mac:x64      # 仅 Intel Mac     → build/macos-x64/
-npm run electron:build:win          # 仅 Windows       → build/windows/
+npm run download:chromium -- all    # darwin-arm64 / darwin-x64 / win32-x64
+npm run electron:build:all          # → build/macos-arm64|macos-x64|windows
 ```
 
-流程：同步版本 → 清空对应 `build/` 子目录 → 下载 Node sidecar → `build:client` → `electron-builder` → 整理产物。
+单架构：
 
-| 命令 | 在 macOS 上产物 |
-|------|----------------|
-| `electron:build:all` | `macos-arm64/` + `macos-x64/` + `windows/` |
+```bash
+npm run electron:build:mac:arm64
+npm run electron:build:mac:x64
+npm run electron:build:win
+```
+
+流程：同步版本 → 清空对应 `build/` 子目录 → 下载 Node sidecar → 从 `playwright-browsers/<platform>` stage → `build:client` → `electron-builder` → 整理产物。
+
+| 命令 | 产物 |
+|------|------|
+| `electron:build:all` | `build/macos-arm64/` + `macos-x64/` + `windows/` |
 | `electron:build:mac:arm64` | `build/macos-arm64/`（`.app` + `.dmg`） |
 | `electron:build:mac:x64` | `build/macos-x64/`（`.app` + `.dmg`） |
 | `electron:build:win` | `build/windows/`（`.exe`） |
 
-在 Windows 开发机上只能构建 `windows/`（无法交叉编译 macOS）。可选：`.github/workflows/electron-release.yml` 用于 CI 自动打包。
-
-打包产物直接输出到 `build/macos-arm64/`、`build/macos-x64/` 或 `build/windows/`。每个 mac 包仅含对应架构的 Node sidecar。
+发版：`npm run release` → 合并 main → 本机 `download:chromium -- all` + `electron:build:all` → `npm run pub`（打 tag并用 `gh` 上传 Release）。`electron-release.yml` 仅在 Release published 后触发下载站。
 
 ### 包内容
 
-- Electron + Chromium
+- Electron
 - Node sidecar 二进制
+- 对应平台的 Playwright Chromium（`playwright-browsers/<platform>`）
 - engine、server、web、scripts、template、node_modules
-- 不含 Playwright Chromium（`channel: chrome`）
 
 ## 环境变量（Sidecar / 启动脚本）
 
@@ -137,4 +141,4 @@ npm run electron:build:win          # 仅 Windows       → build/windows/
 
 ### 浏览器启动失败
 
-客户端模式使用 `channel: chrome`，需本机安装 Google Chrome。
+确认包内 / 开发机存在 `playwright-browsers/<platform>`（`npm run download:chromium`），且已 `npm run build:engine`。

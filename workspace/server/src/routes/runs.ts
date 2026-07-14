@@ -129,7 +129,7 @@ export function registerRunRoutes(
   });
 
   app.delete<{ Params: { jobId: string } }>("/api/runs/:jobId", async (req, reply) => {
-    const ok = runs.cancelJob(req.params.jobId);
+    const ok = runs.cancelJob(req.params.jobId, req.project.id);
     if (!ok) return reply.status(404).send({ error: "任务不存在或已结束" });
     return { ok: true };
   });

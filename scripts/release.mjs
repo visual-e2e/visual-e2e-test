@@ -84,4 +84,8 @@ git("add", "version.js", "package.json", "package-lock.json");
 git("commit", "-m", `chore(release): bump version to ${newVer}`);
 git("push", "-u", "origin", releaseBranch);
 
-console.log(`\n已推送 ${releaseBranch}，请合并到 ${DEFAULT_BRANCH} 后执行 npm run pub`);
+console.log(`\n已推送 ${releaseBranch}`);
+console.log(`合并到 ${DEFAULT_BRANCH} 后，在本机执行:`);
+console.log(`  npm run download:chromium -- all`);
+console.log(`  npm run electron:build:all`);
+console.log(`  npm run pub`);

@@ -6,6 +6,13 @@ import { preflightClientDev } from "./preflight.mjs";
 await preflightClientDev();
 applyClientDevWebEnv();
 
+const buildEngine = spawnSync("npm", ["run", "build:engine"], {
+  cwd: REPO_ROOT,
+  stdio: "inherit",
+  env: process.env,
+});
+if (buildEngine.status !== 0) process.exit(buildEngine.status ?? 1);
+
 const tsc = spawnSync("npx", ["tsc", "-p", "electron/tsconfig.json"], {
   cwd: REPO_ROOT,
   stdio: "inherit",

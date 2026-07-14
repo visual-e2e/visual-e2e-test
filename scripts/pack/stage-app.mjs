@@ -85,11 +85,10 @@ function main() {
   copyFiltered(serverNmSrc, join(stageRoot, "workspace/server/node_modules"));
   console.log("Staged workspace/server/node_modules/");
 
-  const bundledConfig = join(repoRoot, "config", "settings.client.json");
-  const fallbackConfig = join(repoRoot, "config", "settings.json");
+  const settingsSrc = join(repoRoot, "config", "settings.json");
   mkdirSync(join(stageRoot, "config"), { recursive: true });
-  cpSync(existsSync(bundledConfig) ? bundledConfig : fallbackConfig, join(stageRoot, "config", "settings.json"));
-  console.log("Staged config/settings.json (bundled default)");
+  cpSync(settingsSrc, join(stageRoot, "config", "settings.json"));
+  console.log("Staged config/settings.json");
 
   console.log(`\nSidecar app staged at: ${stageRoot}`);
 }

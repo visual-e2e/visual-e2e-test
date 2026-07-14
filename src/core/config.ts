@@ -42,7 +42,6 @@ export interface AppConfig {
     headless: boolean;
     slowMo: number;
     devtools: boolean;
-    channel: string;
     timeout: number;
     actionTimeout: number;
     navigationWaitUntil: "load" | "domcontentloaded" | "networkidle" | "commit";
@@ -137,7 +136,6 @@ export function loadConfig(overrides?: {
       headless: overrides?.headless ?? envBool("HEADLESS", s.browser.headless),
       slowMo: overrides?.slowMo ?? envInt("SLOW_MO", s.browser.slowMo),
       devtools: s.browser.devtools,
-      channel: process.env.BROWSER_CHANNEL ?? s.browser.channel,
       timeout: s.browser.timeout,
       actionTimeout: s.browser.actionTimeout,
       navigationWaitUntil: s.browser.navigationWaitUntil,

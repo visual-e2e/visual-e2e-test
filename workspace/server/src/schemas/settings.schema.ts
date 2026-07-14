@@ -5,7 +5,6 @@ export const settingsSchema = z.object({
     headless: z.boolean(),
     slowMo: z.number().int().min(0),
     devtools: z.boolean(),
-    channel: z.string(),
     timeout: z.number().int().positive(),
     actionTimeout: z.number().int().positive(),
     navigationWaitUntil: z.enum(["load", "domcontentloaded", "networkidle", "commit"]),

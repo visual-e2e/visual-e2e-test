@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getE2eRoot, getProjectsDir, getSettingsPath } from "./paths.mjs";
+import { currentNodePlatform } from "./pack/platform.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = getE2eRoot();
@@ -18,6 +19,15 @@ function resolveNodeBinary() {
   const fromEnv = process.env.BUNDLED_NODE?.trim();
   if (fromEnv && existsSync(fromEnv)) return fromEnv;
   return process.execPath || "node";
+}
+
+function resolvePlaywrightBrowsersPath() {
+  const fromEnv = process.env.PLAYWRIGHT_BROWSERS_PATH?.trim();
+  if (fromEnv) return fromEnv;
+  const dir = join(root, "playwright-browsers", currentNodePlatform());
+  if (!existsSync(dir)) return undefined;
+  if (!readdirSync(dir).some((name) => name.startsWith("chromium-"))) return undefined;
+  return dir;
 }
 
 function resolveCliLaunch() {
@@ -146,6 +156,7 @@ if (!args.includes("--project")) {
 const { bin, args: cliArgs } = resolveCliLaunch();
 const piped = !process.stdout.isTTY;
 const nodeBin = resolveNodeBinary();
+const playwrightBrowsers = resolvePlaywrightBrowsersPath();
 
 const child = spawn(bin, [...cliArgs, ...args], {
   cwd: root,
@@ -154,6 +165,7 @@ const child = spawn(bin, [...cliArgs, ...args], {
     ...process.env,
     BUNDLED_NODE: nodeBin,
     ACTIVE_PROJECT: projectId,
+    ...(playwrightBrowsers ? { PLAYWRIGHT_BROWSERS_PATH: playwrightBrowsers } : {}),
   },
 });
 

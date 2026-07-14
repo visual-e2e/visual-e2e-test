@@ -15,6 +15,7 @@
     "stage:sidecar": "node scripts/pack/stage-app.mjs",
     "download:node": "node scripts/pack/download-node.mjs",
     "download:node:all": "node scripts/pack/download-node.mjs --all",
+    "download:chromium": "node scripts/pack/download-playwright-browsers.mjs",
     "generate:icons": "node scripts/pack/generate-icons.mjs",
     "typecheck": "tsc --noEmit",
     "test:all": "node scripts/run-test.mjs",
@@ -67,6 +68,13 @@
       {
         "from": "electron/resources/node",
         "to": "node",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "electron/resources/playwright-browsers",
+        "to": "playwright-browsers",
         "filter": [
           "**/*"
         ]

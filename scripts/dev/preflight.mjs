@@ -1,4 +1,7 @@
-import { PORTS } from "./env.mjs";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { PORTS, REPO_ROOT } from "./env.mjs";
+import { currentNodePlatform } from "../pack/platform.mjs";
 
 export async function fetchHealth(port, timeoutMs = 2000) {
   try {
@@ -28,7 +31,25 @@ export async function preflightWorkspace() {
   console.warn(`[workspace] Port ${PORTS.workspace} already has a workspace server.`);
 }
 
+function chromiumReady(platformDir) {
+  if (!existsSync(platformDir)) return false;
+  return readdirSync(platformDir).some((name) => name.startsWith("chromium-"));
+}
+
+function requirePlaywrightBrowsers() {
+  const key = currentNodePlatform();
+  const dir = join(REPO_ROOT, "playwright-browsers", key);
+  if (chromiumReady(dir)) return;
+
+  console.error(`[electron:dev] Missing Playwright Chromium: ${dir}`);
+  console.error(`Run: npm run download:chromium -- ${key}`);
+  console.error("Or all platforms: npm run download:chromium -- all");
+  process.exit(1);
+}
+
 export async function preflightClientDev() {
+  requirePlaywrightBrowsers();
+
   const health = await fetchHealth(PORTS.clientDev);
   if (!health) return;
 

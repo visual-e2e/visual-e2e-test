@@ -5,14 +5,14 @@ import {
   Typography, Table, Button, Tag, Drawer, Popconfirm, message, Space,
 } from "antd";
 import { DeleteOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
-import { api, reportUrl } from "../../api/client";
+import { api, canOpenReport, reportUrl } from "../../api/client";
 import { ReportLink } from "../../components/ReportLink";
 import { useProject } from "../../context/ProjectContext";
 import type { RunJob } from "../../types/module";
 import { RunLaunchPanel } from "./RunLaunchPanel";
 import { EnvConfigPanel } from "./EnvConfigPanel";
 import { formatRunSelection } from "./run-selection";
-import { canManageRunArtifacts, resolveRunId } from "./run-id";
+import { canCancelJob, canDeleteJob, canManageRunArtifacts, resolveDeleteId, resolveRunId } from "./run-id";
 import { downloadRunsArchive } from "./download-runs";
 import { ScrollPane } from "../../components/layout/ScrollPane";
 
@@ -28,7 +28,7 @@ export function RunCenterPage() {
     queryFn: api.listRuns,
     enabled: !!projectId,
     refetchInterval: (q) =>
-      q.state.data?.some((j) => j.status === "running" || j.status === "error") ? 2000 : false,
+      q.state.data?.some((j) => j.status === "running") ? 2000 : false,
   });
 
   const cancelMut = useMutation({
@@ -83,10 +83,6 @@ export function RunCenterPage() {
 
   const openDetail = (row: RunJob) => {
     setDetailJob(row);
-    if (row.status !== "running") return;
-    api.getRun(row.jobId).then((fresh) => {
-      if (fresh) setDetailJob(fresh);
-    }).catch(() => undefined);
   };
 
   const rows = runsQuery.data ?? [];
@@ -94,8 +90,8 @@ export function RunCenterPage() {
   const selectedRunIds = selectedRowKeys
     .map((key) => rows.find((r) => r.jobId === key))
     .filter((r): r is RunJob => !!r)
-    .map((r) => resolveRunId(r))
-    .filter((id): id is string => !!id);
+    .filter(canDeleteJob)
+    .map((r) => resolveDeleteId(r));
 
   const batchDeletable = selectedRunIds.length > 0;
 
@@ -174,7 +170,7 @@ export function RunCenterPage() {
           selectedRowKeys,
           onChange: (keys) => setSelectedRowKeys(keys as string[]),
           getCheckboxProps: (row) => ({
-            disabled: !canManageRunArtifacts(row),
+            disabled: !canDeleteJob(row),
           }),
         }}
         columns={[
@@ -192,23 +188,37 @@ export function RunCenterPage() {
           {
             title: "报告",
             render: (_, row) => {
-              if (!reportUrl(row)) return "—";
               const runId = resolveRunId(row);
-              return (
-                <Space size={4}>
-                  <ReportLink href={reportUrl(row)!} />
-                  {runId && projectId ? (
-                    <Button
-                      type="link"
-                      size="small"
-                      style={{ paddingInline: 0 }}
-                      onClick={() => void handleDownload([runId])}
-                    >
-                      下载
-                    </Button>
-                  ) : null}
-                </Space>
-              );
+              if (canOpenReport(row)) {
+                return (
+                  <Space size={4}>
+                    <ReportLink href={reportUrl(row)!} />
+                    {runId && projectId ? (
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{ paddingInline: 0 }}
+                        onClick={() => void handleDownload([runId])}
+                      >
+                        下载
+                      </Button>
+                    ) : null}
+                  </Space>
+                );
+              }
+              if (runId && projectId && canManageRunArtifacts(row)) {
+                return (
+                  <Button
+                    type="link"
+                    size="small"
+                    style={{ paddingInline: 0 }}
+                    onClick={() => void handleDownload([runId])}
+                  >
+                    下载
+                  </Button>
+                );
+              }
+              return "—";
             },
           },
           {
@@ -220,7 +230,7 @@ export function RunCenterPage() {
                 <Button type="link" size="small" onClick={() => openDetail(row)} style={{ paddingInline: 0 }}>
                   详情
                 </Button>
-                {row.cancellable ? (
+                {canCancelJob(row) ? (
                   <Popconfirm
                     title="终止当前运行？"
                     description="将停止测试进程，已完成的场景结果可能不完整。"
@@ -233,17 +243,14 @@ export function RunCenterPage() {
                       终止
                     </Button>
                   </Popconfirm>
-                ) : canManageRunArtifacts(row) ? (
+                ) : canDeleteJob(row) ? (
                   <Popconfirm
                     title="删除此运行记录？"
                     description="将永久删除报告与相关文件。"
                     okText="删除"
                     cancelText="取消"
                     okButtonProps={{ danger: true }}
-                    onConfirm={() => {
-                      const runId = resolveRunId(row);
-                      if (runId) handleDelete([runId]);
-                    }}
+                    onConfirm={() => handleDelete([resolveDeleteId(row)])}
                   >
                     <Button type="link" size="small" danger style={{ paddingInline: 0 }}>
                       删除
@@ -262,9 +269,11 @@ export function RunCenterPage() {
         onClose={() => setDetailJob(null)}
         width={720}
         extra={
-          detailJob && reportUrl(detailJob) ? (
+          detailJob && (canOpenReport(detailJob) || canManageRunArtifacts(detailJob)) ? (
             <Space>
-              <ReportLink href={reportUrl(detailJob)!}>打开报告</ReportLink>
+              {canOpenReport(detailJob) ? (
+                <ReportLink href={reportUrl(detailJob)!}>打开报告</ReportLink>
+              ) : null}
               {canManageRunArtifacts(detailJob) && resolveRunId(detailJob) && projectId ? (
                 <Button
                   type="link"
@@ -284,7 +293,16 @@ export function RunCenterPage() {
             <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
               {formatRunSelection(detailJob)}
             </Typography.Text>
-            <pre style={{ maxHeight: 480, overflow: "auto", background: "#fafafa", padding: 12, fontSize: 12 }}>
+            <pre
+              style={{
+                maxHeight: 480,
+                overflow: "auto",
+                background: "#fafafa",
+                padding: 12,
+                fontSize: 12,
+                userSelect: "text",
+              }}
+            >
               {detailJob.logs.join("\n") || "暂无日志"}
             </pre>
           </>

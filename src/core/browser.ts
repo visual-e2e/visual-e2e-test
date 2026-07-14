@@ -1,6 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import type { AppConfig } from "./config.js";
-import { isClientMode } from "./paths.js";
+
+const LAUNCH_TIMEOUT_MS = 30_000;
 
 export class BrowserManager {
   private playwrightBrowser: Browser | null = null;
@@ -18,43 +19,24 @@ export class BrowserManager {
     if (this.playwrightBrowser) return;
 
     const launchOpts: Parameters<typeof chromium.launch>[0] = {
+      // Bundle installs full Chromium only (--no-shell). Force that binary for
+      // headless too; otherwise Playwright looks for chromium-headless-shell.
+      channel: "chromium",
       headless: this.config.headless,
       slowMo: this.config.slowMo,
+      timeout: LAUNCH_TIMEOUT_MS,
       args: ["--disable-dev-shm-usage", "--disable-breakpad"],
     };
 
-    if (this.config.channel) {
-      launchOpts.channel = this.config.channel as "chrome";
-    }
     if (this.config.devtools && !this.config.headless) {
       (launchOpts as Record<string, unknown>).devtools = true;
     }
 
-    const attempts: (string | undefined)[] = this.config.channel
-      ? isClientMode()
-        ? [this.config.channel]
-        : [this.config.channel, undefined]
-      : [undefined];
-
-    let lastError: Error | null = null;
-    for (const channel of attempts) {
-      try {
-        const opts = { ...launchOpts };
-        if (channel) opts.channel = channel as "chrome";
-        else delete opts.channel;
-        this.playwrightBrowser = await chromium.launch(opts);
-        break;
-      } catch (e) {
-        lastError = e as Error;
-      }
-    }
-
-    if (!this.playwrightBrowser) {
-      const hint =
-        isClientMode() && this.config.channel
-          ? " 客户端模式请确认已安装 Google Chrome。"
-          : "";
-      throw new Error(`浏览器启动失败: ${lastError?.message}${hint}`);
+    try {
+      this.playwrightBrowser = await chromium.launch(launchOpts);
+    } catch (e) {
+      const lastError = e as Error;
+      throw new Error(`浏览器启动失败: ${lastError.message}`);
     }
 
     const contextOpts: Parameters<Browser["newContext"]>[0] = {

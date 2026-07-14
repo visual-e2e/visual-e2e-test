@@ -1,74 +1,22 @@
 name: Electron Release
 
+# 安装包在本机打包后由 npm run pub 上传；本 workflow 仅在 Release 发布后触发站点。
 on:
+  release:
+    types: [published]
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 env:
-  ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
   SITE_REPO: hjm100/visual-e2e-sky
 
 jobs:
-  build:
-    name: macOS (arm64 + x64 + Windows cross)
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm ci --prefix workspace/server
-          npm ci --prefix workspace/web
-
-      - name: Build all desktop packages
-        run: npm run electron:build:all
-
-      - name: Collect installers
-        run: |
-          mkdir -p release-assets
-          shopt -s nullglob
-          for f in build/macos-arm64/*.dmg build/macos-x64/*.dmg build/windows/*.exe; do
-            base=$(basename "$f")
-            # URL-safe filenames for GitHub Release assets
-            safe=$(echo "$base" | tr ' ' '-')
-            cp "$f" "release-assets/$safe"
-          done
-          ls -la release-assets/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: installers
-          path: release-assets/
-          if-no-files-found: error
-
-  release:
-    name: GitHub Release + trigger site
-    needs: build
+  notify-site:
+    name: Trigger download site
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: installers
-          path: installers
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: installers/*
-          generate_release_notes: true
-
       - name: Trigger site redeploy
         if: ${{ secrets.SITE_DEPLOY_TOKEN != '' }}
         uses: peter-evans/repository-dispatch@v3
@@ -76,36 +24,10 @@ jobs:
           token: ${{ secrets.SITE_DEPLOY_TOKEN }}
           repository: ${{ env.SITE_REPO }}
           event-type: release-published
-          client-payload: '{"version": "${{ github.ref_name }}"}'
+          client-payload: '{"version": "${{ github.event.release.tag_name || github.ref_name }}"}'
 
       - name: Site dispatch skipped
         if: ${{ secrets.SITE_DEPLOY_TOKEN == '' }}
         run: |
           echo "::warning::SITE_DEPLOY_TOKEN not set — visual-e2e-sky deploy was not triggered."
           echo "Create a PAT with repo scope and add it as SITE_DEPLOY_TOKEN in this repository."
-
-  build-windows:
-    name: Windows (native, verify only)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm ci --prefix workspace/server
-          npm ci --prefix workspace/web
-
-      - name: Build Windows installer
-        run: npm run electron:build:win
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: desktop-windows-native
-          path: build/windows/
-          if-no-files-found: error
