@@ -22,6 +22,9 @@ All notable changes to this project will be documented in this file.
   - 步骤间的跳转引用会同步更新，避免指向错乱
 - 全局默认步骤延时会反映在步骤编辑中
   - 未单独填写时，以占位符展示全局配置中的默认值
+- 右键新增常用快捷操作
+  - 刷新页面
+  - 打开数据目录
 
 ### Fixes
 

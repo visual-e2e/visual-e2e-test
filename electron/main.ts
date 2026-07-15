@@ -4,6 +4,7 @@ import { registerIpcHandlers } from "./ipc/handlers.js";
 import { buildApplicationMenu } from "./menu/application-menu.js";
 import { startSidecar, stopSidecar } from "./sidecar.js";
 import type { StorageLayout } from "./storage.js";
+import { configureEditSupport } from "./web-contents/edit-support.js";
 import { createMainWindow } from "./windows/create-window.js";
 
 const isDev = !app.isPackaged;
@@ -18,6 +19,7 @@ async function bootstrap(): Promise<void> {
 
   const { layout, baseUrl } = await startSidecar(isDev, process.resourcesPath, app.getPath("userData"));
   storageLayout = layout;
+  configureEditSupport(layout);
   cleanupIfNeeded(isDev, layout);
 
   targetUrl = isDev ? "http://localhost:5173" : baseUrl;
