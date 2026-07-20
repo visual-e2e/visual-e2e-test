@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [1.2.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.1.0...v1.2.0) (2026-07-20)
+
 ## [1.1.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.0.0...v1.1.0) (2026-07-14)
 
 ### Features
