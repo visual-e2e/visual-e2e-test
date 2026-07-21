@@ -46,14 +46,14 @@ function sortFileNames(files: FileEntry[], sort: SortMode): FileEntry[] {
   const copy = [...files];
   copy.sort((a, b) => {
     switch (sort) {
+      case "name-asc":
+        return a.name.localeCompare(b.name, undefined, { numeric: true });
       case "name-desc":
         return b.name.localeCompare(a.name, undefined, { numeric: true });
       case "mtime-asc":
         return a.mtime - b.mtime;
       case "mtime-desc":
         return b.mtime - a.mtime;
-      default:
-        return a.name.localeCompare(b.name, undefined, { numeric: true });
     }
   });
   return copy;
@@ -64,6 +64,8 @@ export function App() {
   const [dir, setDir] = useState(cache.lastDir);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [preview, setPreview] = useState<Array<{ from: string; to: string; conflict?: string }>>(
     [],
   );
@@ -75,6 +77,7 @@ export function App() {
       setFiles(data);
       setSelected(data.map((f) => f.name));
       setPreview([]);
+      setCurrentPage(1);
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -148,6 +151,7 @@ export function App() {
         setFiles([]);
         setSelected([]);
         setPreview([]);
+        setCurrentPage(1);
         if (event.source && "postMessage" in event.source) {
           event.source.postMessage(
             { type: TOOL_MSG.CACHE_CLEARED, toolId: TOOL_ID },
@@ -172,15 +176,16 @@ export function App() {
   }, []);
 
   const previewMap = useMemo(() => new Map(preview.map((p) => [p.from, p])), [preview]);
+  const previewNumberMap = useMemo(
+    () => new Map(preview.map((p, index) => [p.from, cache.naming.startIndex + index])),
+    [preview, cache.naming.startIndex],
+  );
+  const sortedFiles = useMemo(() => sortFileNames(files, cache.sort), [files, cache.sort]);
   const hasConflict = preview.some((p) => p.conflict);
   const hasChanges = preview.some((p) => p.from !== p.to && !p.conflict);
 
   const namingExample = useMemo(() => {
-    const sorted = sortFileNames(
-      files.filter((f) => selected.includes(f.name)),
-      cache.sort,
-    );
-    const sample = sorted[0];
+    const sample = sortedFiles.find((file) => selected.includes(file.name));
     if (!sample) return null;
     const { name, ext } = splitName(sample.name);
     const result = applyTemplate(cache.naming.template, {
@@ -190,7 +195,7 @@ export function App() {
       prefix: cache.naming.prefix,
     });
     return { from: sample.name, to: result };
-  }, [files, selected, cache.sort, cache.naming]);
+  }, [sortedFiles, selected, cache.naming]);
 
   const pickFolder = () => {
     if (window.parent !== window) {
@@ -218,6 +223,7 @@ export function App() {
         setFiles([]);
         setSelected([]);
         setPreview([]);
+        setCurrentPage(1);
         message.success("已清除缓存");
       },
     });
@@ -245,7 +251,7 @@ export function App() {
     {
       title: "#",
       width: 48,
-      render: (_: unknown, __: FileEntry, index: number) => index + 1,
+      render: (_: unknown, row: FileEntry) => previewNumberMap.get(row.name) ?? "—",
     },
     { title: "文件名", dataIndex: "name", ellipsis: true },
     {
@@ -309,7 +315,10 @@ export function App() {
           style={{ width: 140 }}
           value={cache.sort}
           options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-          onChange={(sort: SortMode) => patchCache({ sort })}
+          onChange={(sort: SortMode) => {
+            setCurrentPage(1);
+            patchCache({ sort });
+          }}
         />
         <Space>
           仅图片
@@ -346,9 +355,17 @@ export function App() {
             size="small"
             rowKey="name"
             loading={listMut.isPending}
-            dataSource={files}
+            dataSource={sortedFiles}
             columns={columns}
-            pagination={{ pageSize: 20, showSizeChanger: true }}
+            pagination={{
+              current: currentPage,
+              pageSize,
+              showSizeChanger: true,
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
+            }}
             rowSelection={{
               selectedRowKeys: selected,
               onChange: (keys) => setSelected(keys as string[]),

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 
 ## [1.3.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.2.0...v1.3.0) (2026-07-21)
 
+### Fixes
+
+- 修复图片批量重命名的列表展示与命名设置
+  - 页码和每页展示数量可正常切换
+  - 文件编号与实际重命名序号保持一致
+  - 新文件名前缀默认为 `image`
+  - 文件默认按名称自然升序排列
+
 ## [1.2.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.1.0...v1.2.0) (2026-07-20)
 
 ### Features

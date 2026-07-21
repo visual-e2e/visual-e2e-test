@@ -22,7 +22,7 @@ const DEFAULT: ImageRenameCache = {
   lastDir: "",
   naming: {
     template: "{prefix}_{index:3}{ext}",
-    prefix: "step",
+    prefix: "image",
     startIndex: 1,
   },
   sort: "name-asc",
@@ -34,7 +34,9 @@ export function loadCache(): ImageRenameCache {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return { ...DEFAULT };
-    return { ...DEFAULT, ...JSON.parse(raw) };
+    const cached = JSON.parse(raw);
+    if (cached.sort === "none") cached.sort = DEFAULT.sort;
+    return { ...DEFAULT, ...cached };
   } catch {
     return { ...DEFAULT };
   }

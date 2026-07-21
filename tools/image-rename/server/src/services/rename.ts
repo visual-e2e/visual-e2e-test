@@ -54,14 +54,14 @@ export function sortFiles(files: FileEntry[], sort: SortMode): FileEntry[] {
   const copy = [...files];
   copy.sort((a, b) => {
     switch (sort) {
+      case "name-asc":
+        return a.name.localeCompare(b.name, undefined, { numeric: true });
       case "name-desc":
         return b.name.localeCompare(a.name, undefined, { numeric: true });
       case "mtime-asc":
         return a.mtime - b.mtime;
       case "mtime-desc":
         return b.mtime - a.mtime;
-      default:
-        return a.name.localeCompare(b.name, undefined, { numeric: true });
     }
   });
   return copy;
