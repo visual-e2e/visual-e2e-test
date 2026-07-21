@@ -8,6 +8,7 @@ import { ProfileListPage } from "../features/profiles/ProfileListPage";
 import { RunCenterPage } from "../features/runs/RunCenterPage";
 import { ValidateCenterPage } from "../features/validate/ValidateCenterPage";
 import { SettingsPage } from "../features/config/SettingsPage";
+import { BrowserRuntimePage } from "../features/config/BrowserRuntimePage";
 import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { ToolsHubPage } from "../features/tools/ToolsHubPage";
 import { ToolHostPage } from "../features/tools/ToolHostPage";
@@ -21,6 +22,7 @@ export function AppRoutes() {
           <Route path="/scenarios" element={<ScenarioStudioPage />} />
           <Route path="/scenarios/*" element={<ScenarioStudioPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/browser" element={<BrowserRuntimePage />} />
           <Route path="/variables" element={<VariablesPage />} />
           <Route path="/macros" element={<MacroListPage />} />
           <Route path="/macros/*" element={<MacroListPage />} />

@@ -1,6 +1,8 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { app, BrowserWindow, dialog, ipcMain, type BrowserWindow as BrowserWindowType } from "electron";
+import {
+  app, BrowserWindow, dialog, ipcMain, shell, type BrowserWindow as BrowserWindowType,
+} from "electron";
 import { createReportWindow } from "../windows/create-window.js";
 import { ensureToolRunning } from "../tools/tool-manager.js";
 
@@ -23,12 +25,34 @@ export function registerIpcHandlers(ctx: IpcContext): void {
     return filePath;
   });
 
+  ipcMain.handle("pick-executable", async () => {
+    const isMac = process.platform === "darwin";
+    const isWin = process.platform === "win32";
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: "选择 Chrome 或 Chromium",
+      message: isMac
+        ? "可选择 .app 应用包，或 Contents/MacOS 下的可执行文件"
+        : undefined,
+      properties: isMac ? ["openFile", "openDirectory"] : ["openFile"],
+      filters: isWin
+        ? [{ name: "浏览器", extensions: ["exe"] }]
+        : undefined,
+    });
+    if (canceled || filePaths.length === 0) return null;
+    return filePaths[0] ?? null;
+  });
+
   ipcMain.handle("pick-folder", async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
       properties: ["openDirectory"],
     });
     if (canceled || filePaths.length === 0) return null;
     return filePaths[0] ?? null;
+  });
+
+  ipcMain.handle("show-item-in-folder", (_event, targetPath: string) => {
+    if (!targetPath?.trim()) throw new Error("path 不能为空");
+    shell.showItemInFolder(path.resolve(targetPath));
   });
 
   ipcMain.handle("open-report", async (_event, url: string) => {

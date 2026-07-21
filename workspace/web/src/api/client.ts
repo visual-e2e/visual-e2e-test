@@ -157,6 +157,16 @@ export const api = {
     }),
 
   envCheck: () => request<{ ok: boolean; missing: string[] }>("/api/runs/env-check"),
+  browserCheck: () => request<BrowserCheckResponse>("/api/runs/browser-check"),
+  getBrowserRuntime: () => request<BrowserRuntimeResponse>("/api/browser/runtime"),
+  saveBrowserRuntime: (body: { mode?: "managed" | "custom"; executablePath?: string }) =>
+    request<BrowserRuntimeResponse>("/api/browser/runtime", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  detectBrowsers: () => request<{ candidates: BrowserCandidate[] }>("/api/browser/detect"),
+  installBrowser: () => request<BrowserInstallJob>("/api/browser/install", { method: "POST" }),
+  getBrowserInstallJob: (jobId: string) => request<BrowserInstallJob>(`/api/browser/install/${jobId}`),
   getEnv: () => request<{ exists: boolean; content: string; template: string; path?: string }>("/api/runs/env"),
   saveEnv: (content: string) =>
     request<{ ok: boolean; missing: string[] }>("/api/runs/env", {
@@ -214,4 +224,55 @@ export interface ProjectMeta {
   description?: string;
   envReady?: boolean;
   moduleCount?: number;
+}
+
+export interface BrowserCheckResponse {
+  ok: boolean;
+  status: "missing" | "invalid" | "ready";
+  mode: "managed" | "custom";
+  platform: string;
+  path: string;
+  version: string;
+  hints: string[];
+}
+
+export interface BrowserRuntimeConfig {
+  version: number;
+  mode: "managed" | "custom";
+  managed: { browsersPath: string };
+  custom: { executablePath: string };
+  detected: { version?: string; source?: string; verifiedAt?: string } | null;
+}
+
+export interface BrowserRuntimeResponse {
+  runtime: BrowserRuntimeConfig;
+  check: BrowserCheckResponse;
+  engineVersion: string;
+}
+
+export const BROWSER_COMPATIBILITY = {
+  EXACT: "exact",
+  DIFFERENT: "different",
+  UNKNOWN: "unknown",
+} as const;
+
+export type BrowserCompatibility =
+  typeof BROWSER_COMPATIBILITY[keyof typeof BROWSER_COMPATIBILITY];
+
+export interface BrowserCandidate {
+  path: string;
+  label: string;
+  source: string;
+  version: string;
+  engineVersion: string;
+  compatibility: BrowserCompatibility;
+}
+
+export interface BrowserInstallJob {
+  jobId: string;
+  status: "running" | "done" | "failed";
+  logs: string[];
+  error?: string;
+  startedAt: string;
+  finishedAt?: string;
 }

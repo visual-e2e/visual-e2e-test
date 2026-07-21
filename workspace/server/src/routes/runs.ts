@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { RunOrchestratorService, type RunScope } from "../services/run-orchestrator.service.js";
 import { EnvService } from "../services/env.service.js";
+import { BrowserRuntimeService } from "../services/browser-runtime.service.js";
 import { pipeRunsZip } from "../services/run-archive.service.js";
 import type { WorkspaceConfig } from "../config.js";
 import { readFileSync } from "node:fs";
@@ -38,9 +39,16 @@ export function registerRunRoutes(
         missing: envCheck.missing,
       });
     }
+    const browserCheck = await new BrowserRuntimeService(_config).check();
+    if (!browserCheck.ok) {
+      return reply.status(400).send({
+        error: "测试浏览器未就绪，请先在「浏览器环境」中安装或配置",
+        browser: browserCheck,
+      });
+    }
     try {
       const scope = req.body.scope ?? (req.body.scenarios?.length ? "scenarios" : "module");
-      const job = runs.createJobFromPlan({
+      const job = await runs.createJobFromPlan({
         scope,
         projectId: req.project.id,
         modules: req.body.modules,

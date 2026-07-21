@@ -19,14 +19,20 @@ export class BrowserManager {
     if (this.playwrightBrowser) return;
 
     const launchOpts: Parameters<typeof chromium.launch>[0] = {
-      // Bundle installs full Chromium only (--no-shell). Force that binary for
-      // headless too; otherwise Playwright looks for chromium-headless-shell.
-      channel: "chromium",
       headless: this.config.headless,
       slowMo: this.config.slowMo,
       timeout: LAUNCH_TIMEOUT_MS,
       args: ["--disable-dev-shm-usage", "--disable-breakpad"],
     };
+
+    const customExecutable = process.env.CHROMIUM_EXECUTABLE_PATH?.trim();
+    if (customExecutable) {
+      launchOpts.executablePath = customExecutable;
+    } else {
+      // Bundle installs full Chromium only (--no-shell). Force that binary for
+      // headless too; otherwise Playwright looks for chromium-headless-shell.
+      launchOpts.channel = "chromium";
+    }
 
     if (this.config.devtools && !this.config.headless) {
       (launchOpts as Record<string, unknown>).devtools = true;

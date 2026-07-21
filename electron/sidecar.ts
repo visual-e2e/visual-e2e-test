@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { bundledAppRoot, bundledNodeBinary, requirePlaywrightBrowsersPath } from "./paths.js";
+import { bundledAppRoot, bundledNodeBinary, resolvePlaywrightBrowsersPath } from "./paths.js";
 import { ensureStorage, resolveStorageLayout, type StorageLayout } from "./storage.js";
 
 const DEV_PORT = 3100;
@@ -61,7 +61,7 @@ export async function startSidecar(
   const layout = resolveStorageLayout(isDev, userDataPath);
   ensureStorage(layout, appRoot);
 
-  const playwrightBrowsers = requirePlaywrightBrowsersPath(isDev, resourcesPath);
+  const playwrightBrowsers = resolvePlaywrightBrowsersPath(isDev, layout.configDir);
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -72,10 +72,13 @@ export async function startSidecar(
     WORKSPACE_HOST: "127.0.0.1",
     E2E_RUNTIME: "client",
     BUNDLED_NODE: node,
-    PLAYWRIGHT_BROWSERS_PATH: playwrightBrowsers,
     CLIENT_MODE: isDev ? "0" : "1",
     SERVE_WEB: isDev ? "0" : "1",
   };
+
+  if (playwrightBrowsers) {
+    env.PLAYWRIGHT_BROWSERS_PATH = playwrightBrowsers;
+  }
 
   const args: string[] = [];
   if (isDev && entry.endsWith(".ts")) {

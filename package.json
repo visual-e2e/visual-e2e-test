@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
-    "playwright": "^1.49.0",
+    "playwright": "^1.61.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -75,13 +75,6 @@
       {
         "from": "electron/resources/node",
         "to": "node",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "electron/resources/playwright-browsers",
-        "to": "playwright-browsers",
         "filter": [
           "**/*"
         ]

@@ -32,7 +32,3 @@ export function toolApiOrigin(tool: ToolRegistryEntry, isDev: boolean): string {
   const port = isDev ? tool.devPort : tool.prodPort;
   return `http://127.0.0.1:${port}`;
 }
-
-export function isBuiltinToolId(id: string): boolean {
-  return !id.startsWith("custom-");
-}

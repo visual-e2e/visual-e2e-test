@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { cpus, homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,28 +59,44 @@ export function bundledNodeBinary(isDev: boolean, resourcesPath: string): string
   return join(platformDir, "bin", "node");
 }
 
-/** Directory for PLAYWRIGHT_BROWSERS_PATH (project-local / packaged Chromium). */
-export function bundledPlaywrightBrowsersPath(isDev: boolean, resourcesPath: string): string {
+/** Resolve managed browsers path from user config or dev tree. */
+export function resolvePlaywrightBrowsersPath(
+  isDev: boolean,
+  configDir?: string,
+): string | undefined {
   const fromEnv = process.env.PLAYWRIGHT_BROWSERS_PATH?.trim();
   if (fromEnv) return fromEnv;
 
-  const key = currentPlatformKey();
-  if (isDev) {
-    return join(repoRoot(), "playwright-browsers", key);
+  if (configDir) {
+    const runtimePath = join(configDir, "browser-runtime.json");
+    if (existsSync(runtimePath)) {
+      try {
+        const raw = JSON.parse(readFileSync(runtimePath, "utf-8")) as {
+          mode?: string;
+          managed?: { browsersPath?: string };
+        };
+        if (raw.mode !== "custom") {
+          const key = currentPlatformKey();
+          const candidates = [
+            join(dirname(dirname(configDir)), "playwright-browsers", key),
+            join(dirname(configDir), "playwright-browsers", key),
+          ];
+          for (const dir of candidates) {
+            if (existsSync(dir)) return dir;
+          }
+        }
+      } catch {
+        // ignore invalid config
+      }
+    }
   }
-  return join(resourcesPath, "playwright-browsers", key);
-}
 
-/** Same as bundledPlaywrightBrowsersPath, but fails if the tree is missing. */
-export function requirePlaywrightBrowsersPath(isDev: boolean, resourcesPath: string): string {
-  const dir = bundledPlaywrightBrowsersPath(isDev, resourcesPath);
-  if (!existsSync(dir)) {
-    const hint = isDev
-      ? "Run: npm run download:chromium  (or -- all / -- darwin-arm64|darwin-x64|win32-x64)"
-      : "Packaged Playwright browsers are missing from app resources.";
-    throw new Error(`Playwright browsers not found: ${dir}. ${hint}`);
+  if (isDev) {
+    const devDir = join(repoRoot(), "playwright-browsers", currentPlatformKey());
+    if (existsSync(devDir)) return devDir;
   }
-  return dir;
+
+  return undefined;
 }
 
 function resolveDevNode(): string {

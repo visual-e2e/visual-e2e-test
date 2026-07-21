@@ -120,7 +120,7 @@ export function RunCenterPage() {
 
       <RunLaunchPanel />
 
-      <Space style={{ marginBottom: 16 }}>
+      <Space size="middle" style={{ marginBottom: 16 }}>
         <Button icon={<ReloadOutlined />} onClick={() => runsQuery.refetch()}>
           刷新历史
         </Button>

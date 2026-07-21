@@ -36,19 +36,17 @@ function chromiumReady(platformDir) {
   return readdirSync(platformDir).some((name) => name.startsWith("chromium-"));
 }
 
-function requirePlaywrightBrowsers() {
+function warnPlaywrightBrowsers() {
   const key = currentNodePlatform();
-  const dir = join(REPO_ROOT, "playwright-browsers", key);
-  if (chromiumReady(dir)) return;
+  const repoDir = join(REPO_ROOT, "playwright-browsers", key);
+  if (chromiumReady(repoDir)) return;
 
-  console.error(`[electron:dev] Missing Playwright Chromium: ${dir}`);
-  console.error(`Run: npm run download:chromium -- ${key}`);
-  console.error("Or all platforms: npm run download:chromium -- all");
-  process.exit(1);
+  console.warn(`[electron:dev] 未在仓库发现 Playwright Chromium: ${repoDir}`);
+  console.warn("可在应用内「浏览器环境」一键安装，或执行: npm run download:chromium");
 }
 
 export async function preflightClientDev() {
-  requirePlaywrightBrowsers();
+  warnPlaywrightBrowsers();
 
   const health = await fetchHealth(PORTS.clientDev);
   if (!health) return;

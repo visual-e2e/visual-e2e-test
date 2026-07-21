@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button, Space, Select, message, Card, Alert } from "antd";
 import { PlayCircleOutlined } from "@ant-design/icons";
+import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import { useProject } from "../../context/ProjectContext";
 import type { RunScope, ScenarioSummary } from "../../types/module";
@@ -29,6 +30,10 @@ export function RunLaunchPanel() {
     queryKey: ["env-check", projectId],
     queryFn: api.envCheck,
     enabled: !!projectId,
+  });
+  const browserQuery = useQuery({
+    queryKey: ["browser-check"],
+    queryFn: api.browserCheck,
   });
 
   const allScenariosQuery = useQuery({
@@ -78,8 +83,28 @@ export function RunLaunchPanel() {
     onError: (e: Error) => message.error(e.message),
   });
 
+  const envReady = envQuery.data?.ok ?? false;
+  const browserReady = browserQuery.data?.ok ?? false;
+  const canRun = envReady && browserReady
+    && (scope !== "scenarios" ? scope === "all" || !!module : scenarios.length > 0);
+
   return (
     <Card size="small" title="发起运行" style={{ marginBottom: 16 }}>
+      {!browserReady && browserQuery.data ? (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="测试浏览器未就绪"
+          description={(
+            <>
+              {browserQuery.data.hints.join(" ") || "请先配置测试浏览器。"}
+              {" "}
+              <Link to="/browser">前往浏览器环境</Link>
+            </>
+          )}
+        />
+      ) : null}
       <Space wrap>
         <Select
           value={scope}
@@ -130,10 +155,7 @@ export function RunLaunchPanel() {
           type="primary"
           icon={<PlayCircleOutlined />}
           loading={runMut.isPending}
-          disabled={
-            (envQuery.data ? !envQuery.data.ok : false)
-            || (scope === "scenarios" ? scenarios.length === 0 : scope !== "all" && !module)
-          }
+          disabled={!canRun}
           onClick={() => runMut.mutate()}
         >
           开始运行

@@ -12,8 +12,15 @@ export class RunSession {
   readonly reportFile: string;
 
   constructor(baseDir: string, logsDir: string, videosDir: string) {
-    this.runId = formatRunId(new Date());
-    this.runDir = join(baseDir, this.runId);
+    const envRunId = process.env.RUN_ID?.trim();
+    const envRunDir = process.env.RUN_DIR?.trim();
+    if (envRunId && envRunDir && /^\d{14}$/.test(envRunId)) {
+      this.runId = envRunId;
+      this.runDir = envRunDir;
+    } else {
+      this.runId = formatRunId(new Date());
+      this.runDir = join(baseDir, this.runId);
+    }
     this.logDir = join(this.runDir, logsDir);
     this.screenshotDir = join(this.runDir, "screenshots");
     this.videoDir = join(this.runDir, videosDir);
