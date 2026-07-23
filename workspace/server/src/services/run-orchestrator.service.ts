@@ -426,14 +426,14 @@ export class RunOrchestratorService {
     } else if (scope === "scenarios" && job.scenarios.length > 0) {
       const crossModule = job.scenarios.every((s) => s.includes("/"));
       if (crossModule) {
-        for (const s of job.scenarios) args.push(`--${s}`);
+        for (const s of job.scenarios) args.push("--scenario", s);
       } else {
-        for (const mod of job.modules) args.push(`--${mod}`);
-        for (const s of job.scenarios) args.push(`--${s}`);
+        for (const mod of job.modules) args.push("--module", mod);
+        for (const s of job.scenarios) args.push("--scenario", s);
       }
     } else {
-      for (const mod of job.modules) args.push(`--${mod}`);
-      for (const s of job.scenarios) args.push(`--${s}`);
+      for (const mod of job.modules) args.push("--module", mod);
+      for (const s of job.scenarios) args.push("--scenario", s);
     }
     if (job.options.headed) args.push("--headed");
     if (job.options.headless) args.push("--headless");

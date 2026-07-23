@@ -87,6 +87,7 @@ export interface RecordingSummary {
   module: string;
   stepCount: number;
   status: RecordingStatus;
+  description?: string;
   importedFile?: string;
 }
 
@@ -98,6 +99,7 @@ export interface Recording {
   sessionMeta: ScenarioMeta & { startUrl: string };
   scenario: ScenarioExport;
   status: RecordingStatus;
+  description?: string;
   importedFile?: string;
 }
 

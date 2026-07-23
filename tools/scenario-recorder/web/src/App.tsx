@@ -131,7 +131,9 @@ export function App() {
   const [activeRecording, setActiveRecording] = useState<Recording | null>(null);
   const [jsonDrawerOpen, setJsonDrawerOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const projectsQuery = useQuery({
     queryKey: ["projects"],
@@ -157,8 +159,27 @@ export function App() {
       module: cache?.module || FIXED_DEFAULTS.module,
       startUrl: cache?.startUrl || baseUrl || "",
       requiresLogin: cache?.requiresLogin ?? FIXED_DEFAULTS.requiresLogin,
+      description: "",
     };
   }, [projectId, baseUrl, createOpen]);
+
+  const editDefaults = useMemo((): CreateScenarioValues => {
+    if (!activeRecording) {
+      return createDefaults;
+    }
+    return {
+      scenarioId: activeRecording.scenario.id,
+      scenarioName: activeRecording.scenario.name,
+      module: activeRecording.scenario.module,
+      startUrl:
+        activeRecording.sessionMeta.startUrl
+        || activeRecording.scenario.setup.entryRoute
+        || baseUrl
+        || "",
+      requiresLogin: activeRecording.scenario.setup.requiresLogin,
+      description: activeRecording.description ?? "",
+    };
+  }, [activeRecording, baseUrl, createDefaults, editOpen]);
 
   useEffect(() => {
     requestHostContext();
@@ -270,7 +291,10 @@ export function App() {
             const updated = await api.updateRecording(activeRecording.id, {
               projectId,
               scenario: data.scenario,
-              sessionMeta: { ...data.meta, startUrl: data.startUrl },
+              sessionMeta: {
+                ...data.meta,
+                startUrl: data.startUrl,
+              },
               status: "draft",
               clearImported: true,
             });
@@ -338,7 +362,14 @@ export function App() {
     }
     setCreating(true);
     try {
-      saveCache(projectId, values);
+      saveCache(projectId, {
+        scenarioId: values.scenarioId,
+        scenarioName: values.scenarioName,
+        module: values.module,
+        startUrl: values.startUrl,
+        requiresLogin: values.requiresLogin,
+      });
+      const description = values.description.trim();
       const scenario: ScenarioExport = {
         id: values.scenarioId.trim(),
         name: values.scenarioName.trim(),
@@ -353,6 +384,7 @@ export function App() {
       const recording = await api.createRecording({
         projectId,
         allowEmptySteps: true,
+        ...(description ? { description } : {}),
         sessionMeta: {
           id: scenario.id,
           name: scenario.name,
@@ -375,6 +407,73 @@ export function App() {
     }
   };
 
+  const saveScenarioMeta = async (values: CreateScenarioValues) => {
+    if (!activeRecording || !projectId) {
+      message.error("请先选择场景");
+      return;
+    }
+    if (statusActive) {
+      message.warning("请先结束当前录制");
+      return;
+    }
+    setEditing(true);
+    try {
+      saveCache(projectId, {
+        scenarioId: values.scenarioId,
+        scenarioName: values.scenarioName,
+        module: values.module,
+        startUrl: values.startUrl,
+        requiresLogin: values.requiresLogin,
+      });
+      const id = values.scenarioId.trim();
+      const name = values.scenarioName.trim();
+      const module = values.module.trim();
+      const startUrl = values.startUrl.trim();
+      const description = values.description.trim();
+      const scenario: ScenarioExport = {
+        id,
+        name,
+        module,
+        enabled: activeRecording.scenario.enabled,
+        setup: {
+          requiresLogin: values.requiresLogin,
+          entryRoute: startUrl,
+        },
+        steps: activeRecording.scenario.steps,
+      };
+      const idOrModuleChanged =
+        id !== activeRecording.scenario.id || module !== activeRecording.scenario.module;
+      const updated = await api.updateRecording(activeRecording.id, {
+        projectId,
+        scenario,
+        description,
+        sessionMeta: {
+          id,
+          name,
+          module,
+          requiresLogin: values.requiresLogin,
+          startUrl,
+        },
+        allowEmptySteps: true,
+        ...(idOrModuleChanged && activeRecording.status === "imported"
+          ? { clearImported: true, status: "draft" as const }
+          : {}),
+      });
+      setActiveRecording(updated);
+      setEditOpen(false);
+      await qc.invalidateQueries({ queryKey: ["recordings", projectId] });
+      message.success(
+        idOrModuleChanged && activeRecording.status === "imported"
+          ? "已保存；ID 或模块已变更，需重新导入场景管理"
+          : "已保存",
+      );
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setEditing(false);
+    }
+  };
+
   const startRecordFor = async (recordingId: string) => {
     if (!projectId) return;
     if (sessionId && statusActive) {
@@ -391,7 +490,7 @@ export function App() {
       }
       const startUrl = recording.sessionMeta.startUrl || recording.scenario.setup.entryRoute || baseUrl;
       if (!startUrl) {
-        message.error("缺少起始地址，请编辑场景 JSON 补充 setup.entryRoute");
+        message.error("缺少起始地址，请先编辑场景补充起始地址");
         return;
       }
       saveCache(projectId, {
@@ -623,7 +722,22 @@ export function App() {
             recordings={recordingsQuery.data?.recordings ?? []}
             loading={recordingsQuery.isLoading}
             activeId={activeRecording?.id}
+            recordingBusy={statusActive}
             onSelect={(id) => void selectRecording(id)}
+            onEdit={(id) => {
+              void (async () => {
+                if (sessionId && statusActive) {
+                  message.warning("请先结束当前录制");
+                  return;
+                }
+                try {
+                  await selectRecording(id);
+                  setEditOpen(true);
+                } catch (err) {
+                  message.error(err instanceof Error ? err.message : "打开失败");
+                }
+              })();
+            }}
             onImport={(id) => {
               void (async () => {
                 try {
@@ -763,10 +877,20 @@ export function App() {
 
       <CreateScenarioModal
         open={createOpen}
+        mode="create"
         defaults={createDefaults}
         confirmLoading={creating}
         onCancel={() => setCreateOpen(false)}
         onSubmit={createScenario}
+      />
+
+      <CreateScenarioModal
+        open={editOpen}
+        mode="edit"
+        defaults={editDefaults}
+        confirmLoading={editing}
+        onCancel={() => setEditOpen(false)}
+        onSubmit={saveScenarioMeta}
       />
 
       <ScenarioJsonDrawer

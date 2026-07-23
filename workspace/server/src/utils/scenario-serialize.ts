@@ -9,7 +9,9 @@ function compactParams(params: Record<string, unknown> | undefined): Record<stri
   if (!params) return undefined;
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === false) continue;
+    if (value === undefined || value === null) continue;
+    // continueOnFail:false 需保留，以便覆盖全局 defaultContinueOnFail
+    if (value === false && key !== "continueOnFail") continue;
     if (Array.isArray(value) && value.length === 0) continue;
     if (typeof value === "string" && !value.trim()) continue;
     out[key] = value;
@@ -58,12 +60,14 @@ function compactStep(step: Record<string, unknown>): Record<string, unknown> {
 
 function compactSetup(setup: ScenarioWrite["setup"]): Record<string, unknown> | undefined {
   if (!setup) return undefined;
-  const out: Record<string, unknown> = {};
-  out.requiresLogin = setup.requiresLogin !== false;
+  const out: Record<string, unknown> = {
+    // zod default 为 true；写入显式 boolean，避免 UI 与 JSON 对 undefined 解读不一致
+    requiresLogin: setup.requiresLogin !== false,
+  };
   if (!isBlank(setup.entryRoute) && setup.entryRoute !== "/") out.entryRoute = setup.entryRoute;
   if (setup.refresh) out.refresh = true;
   if (setup.readySelectors?.length) out.readySelectors = setup.readySelectors;
-  return Object.keys(out).length > 0 ? out : undefined;
+  return out;
 }
 
 export function compactScenarioWrite(data: ScenarioWrite): Record<string, unknown> {

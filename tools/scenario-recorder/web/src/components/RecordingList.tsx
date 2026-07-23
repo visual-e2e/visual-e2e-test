@@ -1,12 +1,14 @@
 import { Button, Empty, List, Popconfirm, Space, Spin, Typography } from "antd";
-import { DeleteOutlined, ExportOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, ExportOutlined } from "@ant-design/icons";
 import type { RecordingSummary } from "../types";
 
 interface RecordingListProps {
   recordings: RecordingSummary[];
   loading?: boolean;
   activeId?: string | null;
+  recordingBusy?: boolean;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
   onImport: (id: string) => void;
   onDelete: (id: string) => void;
 }
@@ -23,7 +25,9 @@ export function RecordingList({
   recordings,
   loading,
   activeId,
+  recordingBusy,
   onSelect,
+  onEdit,
   onImport,
   onDelete,
 }: RecordingListProps) {
@@ -72,6 +76,15 @@ export function RecordingList({
                 <Button
                   type="link"
                   size="small"
+                  icon={<EditOutlined />}
+                  disabled={recordingBusy && item.id === activeId}
+                  onClick={() => onEdit(item.id)}
+                >
+                  编辑
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
                   icon={<ExportOutlined />}
                   disabled={item.stepCount === 0}
                   onClick={() => onImport(item.id)}
@@ -85,6 +98,15 @@ export function RecordingList({
                 </Popconfirm>
               </Space>
             </div>
+            {item.description ? (
+              <Typography.Paragraph
+                type="secondary"
+                ellipsis={{ rows: 2 }}
+                className="recorder-list__desc"
+              >
+                {item.description}
+              </Typography.Paragraph>
+            ) : null}
           </div>
         </List.Item>
       )}

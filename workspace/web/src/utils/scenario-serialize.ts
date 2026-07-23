@@ -44,7 +44,9 @@ function compactParams(params: Record<string, unknown> | undefined): Record<stri
   if (!params) return undefined;
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === false) continue;
+    if (value === undefined || value === null) continue;
+    // continueOnFail:false 需保留，以便覆盖全局 defaultContinueOnFail
+    if (value === false && key !== "continueOnFail") continue;
     if (Array.isArray(value) && value.length === 0) continue;
     if (typeof value === "string" && !value.trim()) continue;
     out[key] = value;
@@ -90,8 +92,9 @@ export function compactStep(step: StepDraft): Record<string, unknown> {
 }
 
 function compactSetup(setup: ScenarioDraft["setup"]): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  out.requiresLogin = setup.requiresLogin !== false;
+  const out: Record<string, unknown> = {
+    requiresLogin: setup.requiresLogin === true,
+  };
   if (!isBlank(setup.entryRoute) && setup.entryRoute !== "/") out.entryRoute = setup.entryRoute;
   if (setup.refresh) out.refresh = true;
   if (setup.readySelectors?.length) out.readySelectors = setup.readySelectors;

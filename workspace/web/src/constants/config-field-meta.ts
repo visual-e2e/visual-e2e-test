@@ -25,7 +25,11 @@ export const SETTINGS_FIELDS = {
   intervalBetweenScenariosMs: { label: "场景间隔 (ms)", tooltip: "同一次运行中，两个场景之间的等待" },
   continueOnScenarioFailure: {
     label: "场景失败继续",
-    tooltip: "关闭后，任一场景失败将终止整次运行；开启则继续后续场景",
+    tooltip: "关闭后任一场景失败即终止整次运行；开启则继续执行后续场景",
+  },
+  defaultContinueOnFail: {
+    label: "步骤失败继续",
+    tooltip: "步骤失败后是否默认继续执行后续步骤",
   },
 
   output: { label: "输出", tooltip: "测试报告、日志、录屏的存放位置与开关" },

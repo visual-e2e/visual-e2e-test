@@ -65,6 +65,7 @@ export const api = {
     projectId: string;
     sessionMeta: ScenarioMeta & { startUrl: string };
     scenario: ScenarioExport;
+    description?: string;
     allowEmptySteps?: boolean;
   }) =>
     request<Recording>("/api/recordings", {
@@ -79,6 +80,7 @@ export const api = {
       projectId: string;
       scenario?: ScenarioExport;
       sessionMeta?: ScenarioMeta & { startUrl: string };
+      description?: string | null;
       status?: "draft" | "imported";
       clearImported?: boolean;
       allowEmptySteps?: boolean;

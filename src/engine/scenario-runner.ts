@@ -25,6 +25,17 @@ const DEFAULT_LOOP: ScenarioLoop = { count: 1, intervalMs: 0, continueOnFailure:
 const MAX_STEP_JUMPS = 500;
 const MAX_SCENARIO_HANDOFFS = 20;
 
+/** 步骤 params.continueOnFail 优先；未设置时用全局 defaultContinueOnFail */
+function shouldContinueOnFail(
+  step: { params?: Record<string, unknown> },
+  defaultContinueOnFail: boolean,
+): boolean {
+  const override = step.params?.continueOnFail;
+  if (override === true) return true;
+  if (override === false) return false;
+  return defaultContinueOnFail === true;
+}
+
 interface StepFailure {
   message: string;
   stepId: string;
@@ -445,8 +456,11 @@ export class ScenarioRunner {
 
         const failure: StepFailure = { message, stepId: step.stepId, screenshot, failedStep: failed };
 
-        if (step.params?.continueOnFail === true) {
-          logger.warn(logName, `${prefix}  ↷ ${step.stepId} 失败但 continueOnFail，继续下一步`);
+        if (shouldContinueOnFail(step, this.config.test.defaultContinueOnFail)) {
+          logger.warn(
+            logName,
+            `${prefix}  ↷ ${step.stepId} 失败但 continueOnFail，继续下一步`,
+          );
           deferredFailure ??= failure;
           i++;
           continue;

@@ -233,7 +233,7 @@ export function SettingsPage() {
             </Col>
           </Row>
           <Row gutter={16}>
-            <Col span={12}>
+            <Col span={8}>
               <Form.Item label={SETTINGS_FIELDS.intervalBetweenScenariosMs.label} tooltip={SETTINGS_FIELDS.intervalBetweenScenariosMs.tooltip}>
                 <InputNumber
                   min={0}
@@ -244,11 +244,19 @@ export function SettingsPage() {
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={8}>
               <Form.Item label={SETTINGS_FIELDS.continueOnScenarioFailure.label} tooltip={SETTINGS_FIELDS.continueOnScenarioFailure.tooltip}>
                 <Switch
                   checked={draft.test.continueOnScenarioFailure}
                   onChange={(v) => patchTest({ continueOnScenarioFailure: v })}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label={SETTINGS_FIELDS.defaultContinueOnFail.label} tooltip={SETTINGS_FIELDS.defaultContinueOnFail.tooltip}>
+                <Switch
+                  checked={draft.test.defaultContinueOnFail}
+                  onChange={(v) => patchTest({ defaultContinueOnFail: v })}
                 />
               </Form.Item>
             </Col>

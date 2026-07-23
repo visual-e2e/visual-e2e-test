@@ -19,6 +19,7 @@ export const settingsSchema = z.object({
     defaultReadyTimeout: z.number().int().positive(),
     intervalBetweenScenariosMs: z.number().int().min(0),
     continueOnScenarioFailure: z.boolean(),
+    defaultContinueOnFail: z.boolean().default(false),
   }),
   output: z.object({
     baseDir: z.string().min(1),

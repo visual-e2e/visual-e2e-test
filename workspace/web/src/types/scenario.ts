@@ -65,6 +65,21 @@ export function emptyScenario(module: string): ScenarioDraft {
   };
 }
 
+/** 与引擎 / 落盘语义一致：缺省或非 false 视为需要登录 */
+export function normalizeSetup(raw: unknown): ScenarioSetup {
+  const setup = (raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>)
+    : {}) as Partial<ScenarioSetup>;
+  return {
+    requiresLogin: setup.requiresLogin !== false,
+    entryRoute: typeof setup.entryRoute === "string" ? setup.entryRoute : "/",
+    ...(setup.refresh ? { refresh: true } : {}),
+    ...(Array.isArray(setup.readySelectors) && setup.readySelectors.length > 0
+      ? { readySelectors: setup.readySelectors.filter((s): s is string => typeof s === "string") }
+      : {}),
+  };
+}
+
 export function rawToDraft(raw: Record<string, unknown>, module: string): ScenarioDraft {
   if (raw.extends) {
     return {
@@ -73,7 +88,7 @@ export function rawToDraft(raw: Record<string, unknown>, module: string): Scenar
       module: String(raw.module ?? module),
       enabled: raw.enabled !== false,
       mode: "extends",
-      setup: (raw.setup as ScenarioSetup) ?? { requiresLogin: true, entryRoute: "/" },
+      setup: normalizeSetup(raw.setup),
       loop: raw.loop as ScenarioLoop | undefined,
       extends: String(raw.extends),
       params: (raw.params as Record<string, string>) ?? {},
@@ -86,7 +101,7 @@ export function rawToDraft(raw: Record<string, unknown>, module: string): Scenar
     module: String(raw.module ?? module),
     enabled: raw.enabled !== false,
     mode: "full",
-    setup: (raw.setup as ScenarioSetup) ?? { requiresLogin: true, entryRoute: "/" },
+    setup: normalizeSetup(raw.setup),
     loop: raw.loop as ScenarioLoop | undefined,
     steps: (raw.steps as StepDraft[]) ?? [],
   };

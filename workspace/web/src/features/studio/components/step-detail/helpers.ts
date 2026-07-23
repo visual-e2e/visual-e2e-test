@@ -18,6 +18,14 @@ export function paramBool(step: StepDraft, key: string): boolean {
   return step.params?.[key] === true;
 }
 
+/** 三态：true / false / undefined(继承全局) */
+export function paramBoolOverride(step: StepDraft, key: string): boolean | undefined {
+  const v = step.params?.[key];
+  if (v === true) return true;
+  if (v === false) return false;
+  return undefined;
+}
+
 export function branchKind(target: BranchTarget | undefined): BranchKind {
   return target && "scenario" in target ? "scenario" : "step";
 }

@@ -22,15 +22,15 @@ import { AppHeader } from "./AppHeader";
 const { Sider, Content } = Layout;
 
 const NAV = [
-  { key: "/variables", icon: <DatabaseOutlined />, label: "全局变量" },
+  { key: "/projects", icon: <FolderOutlined />, label: "项目管理" },
   { key: "/scenarios", icon: <AppstoreOutlined />, label: "场景管理" },
   { key: "/macros", icon: <BlockOutlined />, label: "宏步骤" },
   { key: "/rules", icon: <BlockOutlined />, label: "规则模板" },
   { key: "/profiles", icon: <FileMarkdownOutlined />, label: "产品画像" },
-  { key: "/projects", icon: <FolderOutlined />, label: "项目管理" },
   { key: "/runs", icon: <PlayCircleOutlined />, label: "运行中心" },
   { key: "/validate", icon: <SafetyCertificateOutlined />, label: "校验中心" },
   { key: "/settings", icon: <SettingOutlined />, label: "全局配置" },
+  { key: "/variables", icon: <DatabaseOutlined />, label: "全局变量" },
   { key: "/browser", icon: <ChromeOutlined />, label: "浏览器环境" },
   { key: "/tools", icon: <ToolOutlined />, label: "工具箱" },
 ];

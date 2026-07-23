@@ -150,19 +150,45 @@ export function ScenarioStudioPage() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: () => api.deleteScenario(activeModule, scenarioFile!),
-    onSuccess: () => {
+    mutationFn: (file: string) => api.deleteScenario(activeModule, file),
+    onSuccess: async (_res, deletedFile) => {
       message.success("已删除");
-      setScenarioFile(undefined);
+
+      const listKey = ["scenarios", projectId, activeModule] as const;
+      const prevList = qc.getQueryData<{ file: string }[]>(listKey) ?? [];
+      const nextList = prevList.filter((s) => s.file !== deletedFile);
+      qc.setQueryData(listKey, nextList);
+      qc.removeQueries({ queryKey: ["scenario", projectId, activeModule, deletedFile] });
+
       setIsNew(false);
-      setDraft(emptyScenario(activeModule));
-      setFile("");
       setDirty(false);
-      setSelectedStepIndex(undefined);
       setExpanded(undefined);
       setPreviewMode("draft");
       setJsonPreviewOpen(false);
-      qc.invalidateQueries({ queryKey: ["scenarios", projectId, activeModule] });
+
+      const nextFile = nextList[0]?.file;
+      if (nextFile) {
+        setScenarioFile(nextFile);
+        setFile(nextFile);
+        const cached = qc.getQueryData<Record<string, unknown>>([
+          "scenario", projectId, activeModule, nextFile,
+        ]);
+        if (cached) {
+          const next = rawToDraft(cached, activeModule);
+          setDraft(next);
+          setSelectedStepIndex(next.mode === "extends" || next.steps.length > 0 ? 0 : undefined);
+        } else {
+          setDraft(emptyScenario(activeModule));
+          setSelectedStepIndex(undefined);
+        }
+      } else {
+        setScenarioFile(undefined);
+        setFile("");
+        setDraft(emptyScenario(activeModule));
+        setSelectedStepIndex(undefined);
+      }
+
+      await qc.invalidateQueries({ queryKey: listKey });
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -264,7 +290,7 @@ export function ScenarioStudioPage() {
       content: "将永久删除场景 JSON 文件，不可恢复。",
       okText: "删除",
       okButtonProps: { danger: true },
-      onOk: () => deleteMut.mutateAsync(),
+      onOk: () => deleteMut.mutateAsync(scenarioFile),
     });
   };
 

@@ -91,24 +91,36 @@ export function RunDetailDrawer({ jobId, open, onClose }: RunDetailDrawerProps) 
       onClose={onClose}
       width={720}
       extra={headerExtra}
+      styles={{
+        body: {
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
+        },
+      }}
     >
       {job ? (
         <>
-          <Tag color={STATUS_COLOR[job.status]} style={{ marginBottom: 12 }}>
-            {job.status}
-          </Tag>
-          <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
-            {formatRunSelection(job)}
-          </Typography.Text>
+          <div style={{ flexShrink: 0 }}>
+            <Tag color={STATUS_COLOR[job.status]} style={{ marginBottom: 12 }}>
+              {job.status}
+            </Tag>
+            <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+              {formatRunSelection(job)}
+            </Typography.Text>
+          </div>
           <pre
             ref={logRef}
             style={{
-              maxHeight: 480,
+              flex: 1,
+              minHeight: 0,
               overflow: "auto",
               background: "#fafafa",
               padding: 12,
               fontSize: 12,
               userSelect: "text",
+              margin: 0,
             }}
           >
             {job.logs.join("\n") || "暂无日志"}

@@ -57,7 +57,7 @@ export function ScenarioMetaPanel({
           <Col>
             <Form.Item label={SCENARIO_FIELDS.requiresLogin.label} tooltip={SCENARIO_FIELDS.requiresLogin.tooltip} style={{ marginBottom: 0 }}>
               <Switch
-                checked={draft.setup.requiresLogin}
+                checked={draft.setup.requiresLogin === true}
                 onChange={(v) => onChange({ setup: { ...draft.setup, requiresLogin: v } })}
               />
             </Form.Item>

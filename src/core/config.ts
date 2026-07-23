@@ -53,6 +53,8 @@ export interface AppConfig {
     defaultReadyTimeout: number;
     intervalBetweenScenariosMs: number;
     continueOnScenarioFailure: boolean;
+    /** 步骤未单独设置 continueOnFail 时的默认：失败后是否继续后续步骤 */
+    defaultContinueOnFail: boolean;
   };
   output: {
     baseDir: string;
@@ -141,7 +143,10 @@ export function loadConfig(overrides?: {
       navigationWaitUntil: s.browser.navigationWaitUntil,
       viewport: s.browser.viewport,
     },
-    test: s.test,
+    test: {
+      ...s.test,
+      defaultContinueOnFail: s.test.defaultContinueOnFail ?? false,
+    },
     output: {
       ...s.output,
       baseDir: outputBase,

@@ -8,10 +8,12 @@ export interface CreateScenarioValues {
   module: string;
   startUrl: string;
   requiresLogin: boolean;
+  description: string;
 }
 
 interface CreateScenarioModalProps {
   open: boolean;
+  mode?: "create" | "edit";
   defaults: CreateScenarioValues;
   confirmLoading?: boolean;
   onCancel: () => void;
@@ -20,12 +22,14 @@ interface CreateScenarioModalProps {
 
 export function CreateScenarioModal({
   open,
+  mode = "create",
   defaults,
   confirmLoading,
   onCancel,
   onSubmit,
 }: CreateScenarioModalProps) {
   const [form] = Form.useForm<CreateScenarioValues>();
+  const isEdit = mode === "edit";
 
   useEffect(() => {
     if (open) form.setFieldsValue(defaults);
@@ -33,12 +37,12 @@ export function CreateScenarioModal({
 
   return (
     <Modal
-      title="新建场景"
+      title={isEdit ? "编辑场景" : "新建场景"}
       open={open}
       onCancel={onCancel}
       confirmLoading={confirmLoading}
       destroyOnClose
-      okText="创建"
+      okText={isEdit ? "保存" : "创建"}
       onOk={() => {
         void form.validateFields().then((values) => onSubmit(values));
       }}
@@ -74,6 +78,14 @@ export function CreateScenarioModal({
           rules={[{ required: true, message: "请输入起始 URL" }]}
         >
           <Input placeholder="https://example.com" />
+        </Form.Item>
+        <Form.Item label="描述" name="description">
+          <Input.TextArea
+            rows={3}
+            placeholder="可选，显示在录制列表中"
+            maxLength={500}
+            showCount
+          />
         </Form.Item>
       </Form>
     </Modal>

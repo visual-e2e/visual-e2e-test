@@ -105,6 +105,12 @@
   flex-shrink: 0;
 }
 
+.recorder-list__desc {
+  margin: 0 !important;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .recorder-detail {
   display: flex;
   flex-direction: column;

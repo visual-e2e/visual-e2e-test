@@ -7,7 +7,7 @@ import { defaultFieldsForType } from "../../../../utils/scenario-serialize";
 import { api } from "../../../../api/client";
 import { useProject } from "../../../../context/ProjectContext";
 import type { StepFieldsProps } from "./types";
-import { nextStepOptions, paramBool } from "./helpers";
+import { nextStepOptions, paramBoolOverride } from "./helpers";
 
 export function StepHeaderFields({ step, onChange }: Pick<StepFieldsProps, "step" | "onChange">) {
   const [stepIdDraft, setStepIdDraft] = useState(step.stepId);
@@ -63,20 +63,36 @@ export function StepFooterFields({
 }: Pick<StepFieldsProps, "step" | "steps" | "onChange" | "patchParams">) {
   const { projectId } = useProject();
   const settingsQuery = useQuery({
-    queryKey: ["settings", projectId],
+    queryKey: ["settings"],
     queryFn: api.getSettings,
     enabled: !!projectId,
   });
 
   const defaultDelay = settingsQuery.data?.test.defaultStepDelay;
   const defaultTimeout = settingsQuery.data?.test.defaultStepTimeout;
+  const defaultContinueOnFail = settingsQuery.data?.test.defaultContinueOnFail === true;
+  const continueOverride = paramBoolOverride(step, "continueOnFail");
+  const continueEffective = continueOverride ?? defaultContinueOnFail;
 
   return (
     <>
-      <Form.Item label={STEP_FIELDS.continueOnFail.label} tooltip={STEP_FIELDS.continueOnFail.tooltip}>
+      <Form.Item
+        label={STEP_FIELDS.continueOnFail.label}
+        tooltip={
+          continueOverride === undefined
+            ? `${STEP_FIELDS.continueOnFail.tooltip}（当前跟随全局：${defaultContinueOnFail ? "开" : "关"}）`
+            : STEP_FIELDS.continueOnFail.tooltip
+        }
+      >
         <Switch
-          checked={paramBool(step, "continueOnFail")}
-          onChange={(v) => patchParams({ continueOnFail: v || undefined })}
+          checked={continueEffective}
+          onChange={(v) => {
+            if (v === defaultContinueOnFail) {
+              patchParams({ continueOnFail: undefined });
+            } else {
+              patchParams({ continueOnFail: v });
+            }
+          }}
         />
       </Form.Item>
       <Form.Item label={STEP_FIELDS.next.label} tooltip={STEP_FIELDS.next.tooltip}>

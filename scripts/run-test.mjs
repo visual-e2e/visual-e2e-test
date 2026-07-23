@@ -127,26 +127,17 @@ function ensureModuleScripts() {
   }
 }
 
-function normalizeSelectorArg(arg, prev) {
-  const flags = new Set(["--list", "--list-projects", "--headed", "--headless", "--all", "--slow-mo", "--project"]);
-  if (flags.has(arg) || prev === "--slow-mo" || prev === "--project") return arg;
-  if (arg.startsWith("--") && arg.length > 2) return arg;
-  if (!arg.startsWith("-") && arg.length > 0) return `--${arg}`;
-  return arg;
-}
-
 function collectArgs() {
   const lifecycle = process.env.npm_lifecycle_event ?? "";
   const raw = process.argv.slice(2);
 
-  let argv = raw;
   if (lifecycle.startsWith("test:") && lifecycle.length > 5) {
     const name = lifecycle.slice(5);
-    if (name === "all") argv = ["--all", ...raw];
-    else argv = [`--${name}`, ...raw];
+    if (name === "all") return ["--all", ...raw];
+    return ["--module", name, ...raw];
   }
 
-  return argv.map((arg, i) => normalizeSelectorArg(arg, argv[i - 1]));
+  return raw;
 }
 
 const args = collectArgs();

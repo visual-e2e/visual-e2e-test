@@ -14,6 +14,7 @@ export interface SettingsDraft {
     defaultReadyTimeout: number;
     intervalBetweenScenariosMs: number;
     continueOnScenarioFailure: boolean;
+    defaultContinueOnFail: boolean;
   };
   output: {
     baseDir: string;
@@ -44,6 +45,7 @@ export function defaultSettings(): SettingsDraft {
       defaultReadyTimeout: 30000,
       intervalBetweenScenariosMs: 2000,
       continueOnScenarioFailure: true,
+      defaultContinueOnFail: false,
     },
     output: {
       baseDir: "runs",

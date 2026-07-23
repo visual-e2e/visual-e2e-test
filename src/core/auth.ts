@@ -6,26 +6,6 @@ export class RunAuthState {
   authenticated = false;
 }
 
-export async function isLoggedIn(page: Page, config: AppConfig): Promise<boolean> {
-  const url = page.url();
-  const loginPath = config.login.path.replace(/^\//, "");
-
-  if (!url || url === "about:blank") return false;
-  if (url.includes(loginPath) || url.includes("signin")) return false;
-
-  try {
-    const loginFormVisible = await page
-      .locator(config.login.usernameSelector)
-      .first()
-      .isVisible({ timeout: 1500 });
-    if (loginFormVisible) return false;
-  } catch {
-    /* 登录表单不可见，视为已登录 */
-  }
-
-  return true;
-}
-
 export async function ensureLoggedIn(
   page: Page,
   config: AppConfig,
@@ -37,18 +17,14 @@ export async function ensureLoggedIn(
     return;
   }
 
-  if (await isLoggedIn(page, config)) {
-    authState.authenticated = true;
-    log?.("检测到已登录，跳过登录");
-    return;
-  }
-
+  // 本次运行尚未确认登录时直接登录，避免「非登录页即已登录」误判跳过
   log?.("登录...");
   await login(page, config);
   authState.authenticated = true;
 }
 
 export async function login(page: Page, config: AppConfig): Promise<void> {
+  const loginPath = config.login.path.replace(/^\//, "");
   const url = `${config.baseUrl.replace(/\/$/, "")}${config.login.path}`;
   await page.goto(url, {
     waitUntil: config.browser.navigationWaitUntil,
@@ -62,8 +38,19 @@ export async function login(page: Page, config: AppConfig): Promise<void> {
 
   await page.fill(config.login.usernameSelector, config.username);
   await page.fill(config.login.passwordSelector, config.password);
-  await page.click(config.login.submitSelector);
-  await page.waitForLoadState("domcontentloaded", { timeout: config.browser.actionTimeout }).catch(() => {});
+
+  // 等登录跳转完成后再返回，避免随后 entryRoute 的 goto 与未完成导航冲突（net::ERR_ABORTED）
+  await Promise.all([
+    page.waitForURL(
+      (u) => {
+        const href = u.toString();
+        return !href.includes(loginPath) && !href.includes("signin");
+      },
+      { timeout: config.browser.timeout },
+    ),
+    page.click(config.login.submitSelector),
+  ]);
+  await page.waitForLoadState("load", { timeout: config.browser.timeout }).catch(() => {});
 }
 
 export async function navigateTo(page: Page, config: AppConfig, route: string): Promise<void> {

@@ -14,7 +14,8 @@
     "defaultStepTimeout": 10000,
     "defaultReadyTimeout": 30000,
     "intervalBetweenScenariosMs": 2000,
-    "continueOnScenarioFailure": true
+    "continueOnScenarioFailure": true,
+    "defaultContinueOnFail": false
   },
   "output": {
     "baseDir": "runs",

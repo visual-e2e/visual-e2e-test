@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Drawer, Input, Space, Typography, message } from "antd";
+import { Button, Drawer, Input, Space, Tooltip, Typography, message } from "antd";
 import { CopyOutlined, DownloadOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
 import { JsonPreview } from "./JsonPreview";
 import "./json-preview-drawer.css";
@@ -99,14 +99,6 @@ export function ScenarioJsonDrawer({
             </>
           ) : (
             <>
-              {onApplyEdit && (
-                <Button icon={<EditOutlined />} onClick={startEdit}>
-                  编辑
-                </Button>
-              )}
-              <Button icon={<CopyOutlined />} onClick={onCopy}>
-                复制 JSON
-              </Button>
               <Button icon={<DownloadOutlined />} onClick={onDownload}>
                 下载 JSON
               </Button>
@@ -124,6 +116,18 @@ export function ScenarioJsonDrawer({
         保存路径：{savePath}
       </Typography.Text>
       <div className="json-preview-drawer__body">
+        {!editing && (
+          <div className="json-preview-drawer__toolbar">
+            {onApplyEdit && (
+              <Tooltip title="编辑">
+                <Button type="text" size="small" icon={<EditOutlined />} onClick={startEdit} />
+              </Tooltip>
+            )}
+            <Tooltip title="复制 JSON">
+              <Button type="text" size="small" icon={<CopyOutlined />} onClick={onCopy} />
+            </Tooltip>
+          </div>
+        )}
         {editing ? (
           <Input.TextArea
             className="json-preview-drawer__editor"

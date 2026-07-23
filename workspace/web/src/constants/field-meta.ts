@@ -97,7 +97,7 @@ export const STEP_FIELDS = {
   },
   continueOnFail: {
     label: "失败继续",
-    tooltip: "本步失败仍继续执行后续步骤（场景仍可能标记为失败）",
+    tooltip: "本步失败后是否继续执行后续步骤",
   },
   instantVerify: {
     label: "即时验证",
@@ -171,7 +171,7 @@ export const SCENARIO_FIELDS = {
   },
   requiresLogin: {
     label: "需要登录",
-    tooltip: "执行前是否先走登录流程",
+    tooltip: "执行前是否先走登录流程；未写明时默认需要登录",
   },
   entryRoute: {
     label: "入口路由",

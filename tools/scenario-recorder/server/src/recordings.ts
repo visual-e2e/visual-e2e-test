@@ -21,6 +21,7 @@ export interface Recording {
   sessionMeta: ScenarioMeta & { startUrl: string };
   scenario: ScenarioExport;
   status: RecordingStatus;
+  description?: string;
   importedFile?: string;
 }
 
@@ -34,6 +35,7 @@ export interface RecordingSummary {
   module: string;
   stepCount: number;
   status: RecordingStatus;
+  description?: string;
   importedFile?: string;
 }
 
@@ -70,6 +72,7 @@ function toSummary(rec: Recording): RecordingSummary {
     module: rec.scenario.module,
     stepCount: rec.scenario.steps?.length ?? 0,
     status: rec.status,
+    ...(rec.description ? { description: rec.description } : {}),
     importedFile: rec.importedFile,
   };
 }
@@ -105,11 +108,13 @@ export function createRecording(input: {
   projectId: string;
   sessionMeta: ScenarioMeta & { startUrl: string };
   scenario: ScenarioExport;
+  description?: string;
   allowEmptySteps?: boolean;
 }): Recording {
   resolveProjectToolContext(input.projectId);
   validateScenarioExport(input.scenario, { allowEmptySteps: input.allowEmptySteps === true });
   const now = nowIso();
+  const description = input.description?.trim();
   const recording: Recording = {
     id: randomUUID(),
     projectId: input.projectId,
@@ -118,6 +123,7 @@ export function createRecording(input: {
     sessionMeta: input.sessionMeta,
     scenario: input.scenario,
     status: "draft",
+    ...(description ? { description } : {}),
   };
   ensureRecordingsDir(input.projectId);
   writeFileSync(recordingPath(input.projectId, recording.id), `${JSON.stringify(recording, null, 2)}\n`);
@@ -130,6 +136,7 @@ export function updateRecording(
   patch: {
     scenario?: ScenarioExport;
     sessionMeta?: ScenarioMeta & { startUrl: string };
+    description?: string | null;
     status?: RecordingStatus;
     clearImported?: boolean;
     allowEmptySteps?: boolean;
@@ -142,6 +149,11 @@ export function updateRecording(
   }
   if (patch.sessionMeta) {
     rec.sessionMeta = patch.sessionMeta;
+  }
+  if (patch.description !== undefined) {
+    const description = patch.description?.trim() || "";
+    if (description) rec.description = description;
+    else delete rec.description;
   }
   if (patch.status) {
     rec.status = patch.status;

@@ -128,6 +128,7 @@ app.post<{
     projectId?: string;
     sessionMeta?: ScenarioMeta & { startUrl?: string };
     scenario?: unknown;
+    description?: string;
     allowEmptySteps?: boolean;
   };
 }>("/api/recordings", async (req, reply) => {
@@ -144,7 +145,13 @@ app.post<{
       requiresLogin: meta?.requiresLogin ?? scenario.setup.requiresLogin,
       startUrl: meta?.startUrl?.trim() || scenario.setup.entryRoute || "",
     };
-    return createRecording({ projectId, sessionMeta, scenario, allowEmptySteps });
+    return createRecording({
+      projectId,
+      sessionMeta,
+      scenario,
+      description: req.body?.description,
+      allowEmptySteps,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "保存录制记录失败";
     return reply.status(400).send({ error: message });
@@ -171,6 +178,7 @@ app.put<{
     projectId?: string;
     scenario?: unknown;
     sessionMeta?: ScenarioMeta & { startUrl?: string };
+    description?: string | null;
     status?: "draft" | "imported";
     clearImported?: boolean;
     allowEmptySteps?: boolean;
@@ -193,6 +201,9 @@ app.put<{
         requiresLogin: meta.requiresLogin,
         startUrl: meta.startUrl ?? "",
       };
+    }
+    if (req.body?.description !== undefined) {
+      patch.description = req.body.description;
     }
     if (req.body?.status) patch.status = req.body.status;
     if (req.body?.clearImported) patch.clearImported = true;

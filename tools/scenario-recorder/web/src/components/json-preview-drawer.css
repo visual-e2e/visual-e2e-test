@@ -7,6 +7,7 @@
 }
 
 .json-preview-drawer__body {
+  position: relative;
   height: calc(100vh - 220px);
   min-height: 320px;
   overflow: auto;
@@ -15,12 +16,26 @@
   border-radius: 8px;
 }
 
+.json-preview-drawer__toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(250, 250, 250, 0.92);
+  border-radius: 6px;
+}
+
 .json-preview-drawer__body .json-preview--embedded {
   min-height: 100%;
 }
 
 .json-preview-drawer__body .json-preview__code {
   min-height: 100%;
+  padding-top: 36px;
+  padding-right: 56px;
   background: transparent;
 }
 

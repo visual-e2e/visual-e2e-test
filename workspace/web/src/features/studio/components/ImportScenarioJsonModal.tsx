@@ -41,6 +41,7 @@ export function ImportScenarioJsonModal({
     draft: ScenarioDraft;
     suggestedFile: string;
     moduleAdjusted: boolean;
+    moduleMissing: boolean;
     fileConflict: boolean;
   } | null>(null);
   const [issues, setIssues] = useState<ValidateIssue[]>([]);
@@ -71,7 +72,11 @@ export function ImportScenarioJsonModal({
         return;
       }
 
-      const scenariosInModule = await api.scenarios(result.draft.module);
+      const modules = await api.modules();
+      const moduleExists = modules.some((m) => m.module === result.draft.module);
+      const scenariosInModule = moduleExists
+        ? await api.scenarios(result.draft.module)
+        : [];
       const fileConflict = scenariosInModule.some(
         (s) => s.file === result.suggestedFile || s.file === `${result.draft.id}.json`,
       );
@@ -80,10 +85,13 @@ export function ImportScenarioJsonModal({
         draft: result.draft,
         suggestedFile: result.suggestedFile,
         moduleAdjusted: result.moduleAdjusted,
+        moduleMissing: !moduleExists,
         fileConflict,
       });
 
-      if (result.moduleAdjusted) {
+      if (!moduleExists) {
+        message.info(`模块「${result.draft.module}」不存在，保存时将自动创建`);
+      } else if (result.moduleAdjusted) {
         message.info(`将导入到模块「${result.draft.module}」`);
       }
     } catch (e) {
@@ -147,7 +155,7 @@ export function ImportScenarioJsonModal({
     >
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          选择场景 JSON 文件，将校验结构与步骤内容。通过后可载入编辑器；保存时若模块不存在将自动创建。
+          选择场景 JSON 文件，将校验结构与步骤内容。通过后可载入编辑器；若模块不存在，保存时会自动创建后再写入场景。
         </Typography.Paragraph>
 
         <Upload.Dragger {...uploadProps} disabled={loading}>
@@ -165,11 +173,19 @@ export function ImportScenarioJsonModal({
               <Space direction="vertical" size={0}>
                 <span>ID：{parsed.draft.id}</span>
                 <span>名称：{parsed.draft.name}</span>
-                <span>模块：{parsed.draft.module}</span>
+                <span>模块：{parsed.draft.module}{parsed.moduleMissing ? "（保存时自动创建）" : ""}</span>
                 <span>步骤数：{parsed.draft.steps.length}</span>
                 <span>建议文件名：{parsed.suggestedFile}</span>
               </Space>
             }
+          />
+        )}
+
+        {parsed?.moduleMissing && (
+          <Alert
+            type="info"
+            showIcon
+            message={`模块「${parsed.draft.module}」尚不存在，保存时将自动创建后再写入场景`}
           />
         )}
 

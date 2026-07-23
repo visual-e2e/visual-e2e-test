@@ -18,7 +18,8 @@ npm run download:chromium -- all --force
 
 npm run test -- --list
 npm run test -- --list-projects
-npm run test -- --project <your-project-id> --login
+npm run test -- --project <your-project-id> --module login
+npm run test -- --project <your-project-id> --module login --scenario login_success
 npm run test -- --project <your-project-id> --all
 npm run test:all -- --headed
 ```

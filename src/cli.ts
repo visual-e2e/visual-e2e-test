@@ -4,8 +4,6 @@ import { listModules, resolveExecutionTargets } from "./core/modules.js";
 import { listProjectIds } from "./core/project-context.js";
 import { ModuleRunner } from "./runner/module-runner.js";
 
-const RUN_FLAGS = new Set(["--list", "--list-projects", "--headed", "--headless", "--all", "--project", "--slow-mo"]);
-
 function parseArgs(argv: string[]) {
   const modules: string[] = [];
   const scenarioNames: string[] = [];
@@ -43,23 +41,19 @@ function parseArgs(argv: string[]) {
       projectId = argv[++i];
       continue;
     }
+    if (arg === "--module") {
+      const value = argv[++i];
+      if (value) modules.push(value);
+      continue;
+    }
+    if (arg === "--scenario") {
+      const value = argv[++i];
+      if (value) scenarioNames.push(value);
+      continue;
+    }
     if (arg === "--slow-mo") {
       slowMo = parseInt(argv[++i] ?? "0", 10);
       continue;
-    }
-
-    const name = arg.startsWith("--") ? arg.slice(2) : arg;
-    if (!name || RUN_FLAGS.has(arg)) continue;
-
-    if (name.includes("/")) {
-      scenarioNames.push(name);
-      continue;
-    }
-
-    if (modules.length === 0) {
-      modules.push(name);
-    } else {
-      scenarioNames.push(name);
     }
   }
 
@@ -89,16 +83,17 @@ function printHelp(scenariosDir: string, projectId: string, fixturesDir: string)
     console.log("  （暂无模块）");
   } else {
     for (const m of modules) {
-      console.log(`  --${m.module.padEnd(14)} ${m.description ?? ""}`);
+      console.log(`  --module ${m.module.padEnd(12)} ${m.description ?? ""}`);
       for (const s of m.scenarios) {
-        console.log(`      --${s.name}  ${s.scenario.name}`);
+        console.log(`      --scenario ${s.name}  ${s.scenario.name}`);
       }
     }
   }
   console.log("-".repeat(50));
   console.log("\n用法:");
-  console.log("  npm run test -- --project <id> --login");
-  console.log("  npm run test -- --project <id> --login --login_success");
+  console.log("  npm run test -- --project <id> --module login");
+  console.log("  npm run test -- --project <id> --module login --scenario login_success");
+  console.log("  npm run test -- --project <id> --scenario project/project_create_and_verify");
   console.log("  npm run test -- --project <id> --all");
   console.log("  npm run test -- --list-projects");
 }
@@ -137,12 +132,16 @@ async function main(): Promise<void> {
   );
 
   if (unknownModules.length) {
-    console.error(`未知模块: ${unknownModules.map((m) => `--${m}`).join(", ")}`);
-    console.error(`可用: ${listModules(config.scenariosDir, config.fixturesDir).map((m) => `--${m.module}`).join(" | ")}`);
+    console.error(`未知模块: ${unknownModules.map((m) => `--module ${m}`).join(", ")}`);
+    console.error(
+      `可用: ${listModules(config.scenariosDir, config.fixturesDir)
+        .map((m) => `--module ${m.module}`)
+        .join(" | ")}`,
+    );
     process.exit(1);
   }
   if (unknownScenarios.length) {
-    console.error(`未知场景: ${unknownScenarios.map((s) => `--${s}`).join(", ")}`);
+    console.error(`未知场景: ${unknownScenarios.map((s) => `--scenario ${s}`).join(", ")}`);
     process.exit(1);
   }
   if (refs.length === 0) {
