@@ -8,6 +8,7 @@ build/
 playwright-browsers/
 *.log
 .DS_Store
+*.tsbuildinfo
 
 # Electron build artifacts
 electron/dist/
