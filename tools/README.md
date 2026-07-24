@@ -1,175 +1,62 @@
-# 工具箱（tools）
+# 工具平台
 
-与 `workspace/` 平级的独立工具生态。每个工具是 mini-app（自有 Fastify API + Vite Web），主项目只负责注册、iframe 嵌入与 Electron 桥接。
-
-## 结构
-
-```text
-tools/
-├── registry.json              # 主项目发现清单（唯一依赖入口）
-├── README.md
-└── {tool-id}/
-    ├── tool.json              # 工具自描述
-    ├── package.json
-    ├── server/                # Fastify，监听 127.0.0.1
-    ├── web/                   # Vite + React
-    └── scripts/dev.mjs        # 并行启动 server + web
-```
-
-主项目集成层（薄）：
+主应用作为工具运行时：发现、安装、启动、RPC 嵌入。  
+业务工具以独立仓库开发，打包为 `.vettool.zip` 后安装到本机：
 
 ```text
-workspace/web/src/features/tools/     # ToolsHubPage、ToolHostPage
-workspace/server/src/routes/tools-registry.ts
-electron/tools/tool-manager.ts
-electron/preload.ts                   # pickFolder 等系统能力
+~/Library/Application Support/visual-e2e-test/tools/
+├── installed/{id}/
+├── registry.json
+├── runtime.json
+└── dev-links.json          # 可选：本地开发目录
 ```
 
-## 架构
+升级主应用**不会**清除已安装工具。
 
-```text
-主工作台 (workspace/web)
-  ├─ /tools              → 工具列表
-  └─ /tools/:toolId      → iframe 嵌入工具 Web
-        ↕ postMessage（选目录、清缓存）
-工具 mini-app
-  ├─ web (:webDevPort dev / :prodPort prod)
-  └─ server (:devPort dev / :prodPort prod)
-Electron（可选）
-  └─ tool-manager 生产环境 spawn 工具 server
-```
+安装时使用工具包 `tool.json` 中声明的生产端口（`preferredProd` / `prod`）；若该端口已被占用或与其它已装工具冲突，安装会失败并提示先释放端口。
 
-## 端口约定
+依赖 Playwright 的工具（如场景录制、健康扫描）打包时不内嵌 `playwright`；启动时 Host 会把主应用 `node_modules` 中的 `playwright` / `playwright-core` 软链到工具目录，供 ESM 解析（仅设 `NODE_PATH` 不够）。
 
-在 `registry.json` 为每个工具分配三组端口，`scripts/tools/discover.mjs` 启动前校验不重复。
+已安装工具可通过卡片菜单「更新…」选择本地 `.vettool.zip`：同版本覆盖或异版本升级时，会先停止服务再安装并自动启动。
 
-| 字段 | 用途 |
+## 独立工具仓库
+
+| 工具 | 仓库 |
 |------|------|
-| `devPort` | 工具 API（开发） |
-| `webDevPort` | 工具 Web Vite（开发；iframe 加载此端口） |
-| `prodPort` | 生产：API + 静态托管 `web/dist`（`SERVE_WEB=1`） |
-
-## 命令
+| 图片批量重命名 | `visual-e2e-tool-image-rename` |
+| 场景录制 | `visual-e2e-tool-scenario-recorder` |
+| 健康扫描 | `visual-e2e-tool-health-scan` |
+| 脚手架模板 | `visual-e2e-tool-template` |
+| CLI | `visual-e2e-cli`（`vet init tool`） |
 
 ```bash
-npm run tools:list       # 列出已注册工具与端口
-npm run tools:install    # 各工具目录 npm install
-npm run tools:dev        # 启动 registry 中全部工具
-npm run tools:dev -- image-rename   # 仅启动指定工具
-npm run tools:build      # 构建全部工具（client 打包前执行）
+cd visual-e2e-tool-image-rename
+npm run pack
+# 在工具箱「安装工具包」选择 dist/*.vettool.zip
 ```
 
-`npm run electron:dev` 会同步拉起 `tools:dev`。
+## Host API
 
-`npm run workspace` 不会自动启动工具；Web 开发时需另开终端执行 `npm run tools:dev`。
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/tools` | 已安装 / dev-link 列表（含 version） |
+| POST | `/api/tools/install` | `{ path }` 本地 zip |
+| DELETE | `/api/tools/:id` | 卸载用户安装的工具 |
 
-## registry.json
+## RPC
+
+见仓库根目录 [`rpc/`](../rpc/README.md)。
+
+## 本地开发联调
+
+在 `{userData}/tools/dev-links.json`：
 
 ```json
 {
-  "version": 1,
-  "tools": [
-    {
-      "id": "image-rename",
-      "name": "图片批量重命名",
-      "description": "按规则批量重命名文件夹中的图片",
-      "entry": "image-rename",
-      "icon": "picture",
-      "category": "file",
-      "devPort": 3201,
-      "prodPort": 7201,
-      "webDevPort": 5201
-    }
+  "links": [
+    { "id": "image-rename", "path": "/absolute/path/to/visual-e2e-tool-image-rename" }
   ]
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `id` | 路由 `/tools/:id`、环境变量 `TOOL_ID` |
-| `entry` | `tools/{entry}/` 目录名 |
-| `devPort` / `prodPort` / `webDevPort` | 见上表 |
-
-## 主项目 API
-
-```http
-GET /api/tools/registry
-```
-
-返回 `registry.json` 内容，无工具业务逻辑。
-
-## iframe 嵌入
-
-- 开发：iframe `src` = `http://127.0.0.1:{webDevPort}/`
-- 生产：iframe `src` = `http://127.0.0.1:{prodPort}/`（工具 server 托管静态资源）
-- `sandbox` 需包含 `allow-same-origin`（Vite 开发模式加载模块依赖同源）
-- 进入页面前轮询 `GET http://127.0.0.1:{devPort}/api/health`
-
-## postMessage 协议
-
-定义于 `workspace/web/src/features/tools/types.ts`（`TOOL_MSG`）。
-
-| 消息 | 方向 | 载荷 |
-|------|------|------|
-| `vet-tool:bridge:pick-folder` | 工具 → 宿主 | — |
-| `vet-tool:bridge:pick-folder-result` | 宿主 → 工具 | `{ path: string \| null }` |
-| `vet-tool:cache:clear` | 宿主 → 工具 | — |
-| `vet-tool:cache:cleared` | 工具 → 宿主 | `{ toolId: string }` |
-
-宿主校验 `event.origin` 与工具 Web origin 一致后再处理。
-
-## 状态持久化
-
-- 工具 UI 偏好存 **localStorage**，key 前缀 `vet-tool:{toolId}:`
-- 无 server 端 state 文件
-- 「清除缓存」只删除 localStorage，不修改磁盘文件（在内置工具内部操作）
-
-## 自定义工具
-
-使用者可在工具箱「自定义」分区添加外链工具，保存在 `vet-tool:hub:custom-tools:v1`（localStorage）。
-
-| 字段 | 说明 |
-|------|------|
-| 名称 | 卡片标题 |
-| 地址 | `http` / `https` URL，iframe 嵌入打开 |
-| 图标地址 | 可选，公网图片 URL |
-| 描述 | 可选 |
-
-实现：`workspace/web/src/features/tools/custom-tools-store.ts`。部分网站禁止 iframe 嵌入，宿主页提供「在浏览器中打开」。
-
-## 新增工具
-
-1. 复制 `tools/image-rename/` 为模板，改 `tool.json`、`package.json`
-2. 在 `registry.json` 注册，分配未占用端口
-3. `npm run tools:install`
-4. 独立调试：`cd tools/{id} && npm run dev`
-5. 集成验证：主项目打开 `/tools/{id}`
-6. `npm run tools:build`，确认 `npm run stage:sidecar` 可 staged
-
-新增工具**不需要**修改根 `package.json` 的 scripts。
-
-## Electron 打包
-
-- `build:client` 包含 `tools:build`
-- `scripts/pack/stage-app.mjs` 复制各工具的 `server/dist`、`web/dist`、`node_modules`、`tool.json`
-- `electron/tools/tool-manager.ts` 从 `Resources/app/tools/{entry}/` 启动 server（`SERVE_WEB=1`，端口 `prodPort`）
-
-## preload
-
-Electron preload 须编译为 CommonJS（`electron/tsconfig.preload.json`），与 main 进程 ESM 分开构建。`npm run build:electron` 依次执行两份 tsconfig。
-
-## 故障排查
-
-| 现象 | 原因 | 处理 |
-|------|------|------|
-| iframe 空白，CORS `origin 'null'` | sandbox 缺 `allow-same-origin` | 检查 `ToolHostPage` sandbox 属性 |
-| 「工具未启动」 | API health 不通 | `npm run tools:dev` |
-| `electronAPI` 未定义 | preload 加载失败 | `npm run build:electron`，确认 `dist/preload.js` 为 CommonJS |
-| dev / prod localStorage 不共享 | 不同 origin（5201 vs 7201） | 以实际嵌入端口为准验收 |
-
-## 已注册工具
-
-| id | 文档 |
-|----|------|
-| `image-rename` | [image-rename/README.md](./image-rename/README.md) |
-| `scenario-recorder` | [scenario-recorder/README.md](./scenario-recorder/README.md) |
+工具仓自行 `npm run dev`，或由 Host 按 `main` 启动生产构建产物。

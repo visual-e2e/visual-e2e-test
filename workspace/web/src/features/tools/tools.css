@@ -44,8 +44,66 @@
   margin-top: 24px;
 }
 
+.tools-hub__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .tools-hub__section-title {
   margin-bottom: 12px !important;
+}
+
+.tools-hub__section-head .tools-hub__section-title {
+  margin-bottom: 0 !important;
+}
+
+.tools-hub__store-modal-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tools-hub__store-modal-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.tools-hub__store-modal .ant-modal-content {
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tools-hub__store-modal .ant-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.tools-hub__grid--store {
+  align-items: start;
+}
+
+.tools-hub__card--store {
+  cursor: default;
+}
+
+.tools-hub__card--store:hover {
+  border-color: #d9d9d9;
+  box-shadow: none;
+}
+
+.tools-hub__store-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .tools-hub__grid {
@@ -58,6 +116,15 @@
   height: 100%;
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tools-hub__card.tools-hub__card--store {
+  height: auto;
+  align-self: start;
+}
+
+.tools-hub__card.tools-hub__card--store .ant-card-body {
+  min-height: 0;
 }
 
 .tools-hub__card:hover {
@@ -84,6 +151,13 @@
   white-space: nowrap;
 }
 
+.tools-hub__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
 .tools-hub__icon-img {
   width: 20px;
   height: 20px;
@@ -94,3 +168,9 @@
 .tools-hub__card-actions {
   flex-shrink: 0;
 }
+
+.tools-hub__card-port {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+

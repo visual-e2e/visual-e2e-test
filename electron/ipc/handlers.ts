@@ -1,16 +1,52 @@
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import {
   app, BrowserWindow, dialog, ipcMain, shell, type BrowserWindow as BrowserWindowType,
 } from "electron";
 import { createReportWindow } from "../windows/create-window.js";
-import { ensureToolRunning } from "../tools/tool-manager.js";
+import { ensureToolRunning, stopToolAndWait } from "../tools/tool-manager.js";
 
 export interface IpcContext {
   reportWindow: BrowserWindowType | null;
   isDev: boolean;
   appRoot: string;
   nodeBinary: string;
+}
+
+function assertHttpUrl(url: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("无效的下载地址");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("仅支持 http/https 下载");
+  }
+  return parsed;
+}
+
+async function downloadToTemp(url: string, filenameHint?: string): Promise<string> {
+  const parsed = assertHttpUrl(url);
+  const response = await fetch(parsed.href, {
+    redirect: "follow",
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!response.ok) {
+    throw new Error(`下载失败 HTTP ${response.status}`);
+  }
+
+  const hint =
+    filenameHint?.trim() ||
+    path.basename(parsed.pathname) ||
+    `tool-${Date.now()}.vettool.zip`;
+  const safeName = hint.replace(/[^\w.\-]+/g, "_");
+  const dir = path.join(app.getPath("temp"), "visual-e2e-tool-downloads");
+  mkdirSync(dir, { recursive: true });
+  const dest = path.join(dir, `${Date.now()}-${safeName}`);
+  const buf = Buffer.from(await response.arrayBuffer());
+  writeFileSync(dest, buf);
+  return dest;
 }
 
 export function registerIpcHandlers(ctx: IpcContext): void {
@@ -93,10 +129,45 @@ export function registerIpcHandlers(ctx: IpcContext): void {
     }
   });
 
+  ipcMain.handle("pick-tool-package", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: "选择工具安装包",
+      properties: ["openFile"],
+      filters: [
+        { name: "Visual E2E Tool", extensions: ["vettool.zip", "zip"] },
+      ],
+    });
+    if (canceled || filePaths.length === 0) return null;
+    return filePaths[0] ?? null;
+  });
+
+  ipcMain.handle(
+    "download-tool-package",
+    async (_event, url: string, filename?: string) => {
+      if (!url?.trim()) throw new Error("url 不能为空");
+      return downloadToTemp(url.trim(), filename);
+    },
+  );
+
   ipcMain.handle("ensure-builtin-tool", async (_event, toolId: string) => {
     if (!toolId?.trim()) {
       throw new Error("toolId 不能为空");
     }
     return ensureToolRunning(toolId, ctx.isDev, ctx.appRoot, ctx.nodeBinary);
+  });
+
+  ipcMain.handle("ensure-tool", async (_event, toolId: string) => {
+    if (!toolId?.trim()) {
+      throw new Error("toolId 不能为空");
+    }
+    return ensureToolRunning(toolId, ctx.isDev, ctx.appRoot, ctx.nodeBinary);
+  });
+
+  ipcMain.handle("stop-tool", async (_event, toolId: string) => {
+    if (!toolId?.trim()) {
+      throw new Error("toolId 不能为空");
+    }
+    await stopToolAndWait(toolId);
+    return { ok: true };
   });
 }

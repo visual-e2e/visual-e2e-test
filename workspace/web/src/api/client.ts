@@ -199,7 +199,47 @@ export const api = {
     ),
 
   toolsRegistry: () =>
-    request<import("../features/tools/types").ToolRegistryResponse>("/api/tools/registry"),
+    request<import("../features/tools/types").ToolRegistryResponse>("/api/tools"),
+  listTools: () =>
+    request<import("../features/tools/types").ToolRegistryResponse>("/api/tools"),
+  installTool: (path: string, options?: { force?: boolean }) =>
+    request<{
+      ok: boolean;
+      tool: {
+        id: string;
+        version: string;
+        name: string;
+        previousVersion?: string;
+        replaced: boolean;
+      };
+    }>("/api/tools/install", {
+      method: "POST",
+      body: JSON.stringify({ path, force: Boolean(options?.force) }),
+    }),
+  inspectTool: (path: string) =>
+    request<{
+      id: string;
+      version: string;
+      name: string;
+      description: string;
+      preferredProd?: number;
+      installedVersion?: string;
+      alreadyInstalled: boolean;
+    }>("/api/tools/inspect", { method: "POST", body: JSON.stringify({ path }) }),
+  uninstallTool: (toolId: string) =>
+    request<{ ok: boolean }>(`/api/tools/${encodeURIComponent(toolId)}`, {
+      method: "DELETE",
+    }),
+  fetchToolPackage: (url: string, filename?: string) =>
+    request<{ ok: boolean; path: string; filename: string; size: number }>(
+      "/api/tools/fetch-package",
+      { method: "POST", body: JSON.stringify({ url, filename }) },
+    ),
+  toolPackageDownloadUrl: (url: string, filename?: string) => {
+    const params = new URLSearchParams({ url });
+    if (filename) params.set("filename", filename);
+    return `${API_BASE}/api/tools/download-package?${params.toString()}`;
+  },
 };
 
 function draftPayload(draft: ScenarioDraft): Record<string, unknown> {

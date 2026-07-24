@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE?: string;
+  readonly VITE_TOOLS_CATALOG_URL?: string;
 }
 
 interface ImportMeta {
@@ -15,9 +16,13 @@ interface Window {
     openReport: (url: string) => Promise<void>;
     pickFolder: () => Promise<string | null>;
     pickExecutable: () => Promise<string | null>;
+    pickToolPackage?: () => Promise<string | null>;
+    downloadToolPackage?: (url: string, filename?: string) => Promise<string>;
     showItemInFolder: (path: string) => Promise<void>;
     openExternalTool: (url: string, title?: string) => Promise<void>;
     ensureBuiltinTool: (toolId: string) => Promise<number>;
+    ensureTool?: (toolId: string) => Promise<number>;
+    stopTool?: (toolId: string) => Promise<{ ok: boolean }>;
   };
   showSaveFilePicker?: (options?: {
     suggestedName?: string;

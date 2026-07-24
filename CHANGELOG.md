@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 
 
+
+## [2.0.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.4.0...v2.0.0) (2026-07-23)
+
+### Features
+
+- 工具箱升级为可安装的工具平台
+  - 支持安装 `.vettool.zip` 工具包；列表展示工具当前版本与占用端口
+  - 用户安装的工具保存在本机 Application Support 下的 `tools/` 目录，升级主应用不会清除
+  - 可卸载已安装工具；支持本地包更新/覆盖（同版本覆盖、异版本升级，先停服务再安装并自动启动）
+  - 端口严格使用 `tool.json` 声明值，不自动递增；占用或与其它工具冲突时拒绝安装并提示释放
+  - Host 启动时注入 `playwright` 软链，供场景录制等依赖 Playwright 的工具使用
+  - 主应用与工具通过统一 RPC 协议通信（兼容旧版消息）
+  - 应用商城：读取官网 `tools.json`；工具箱以「打开应用市场」弹框展示，支持一键安装（服务端拉取安装包）与本地「安装工具」
+  - 应用市场「下载包」经本地代理下载，不新开浏览器窗口
+- 图片批量重命名、场景录制改为独立工具包
+  - 不再内置在主应用仓库；通过工具箱安装使用
+
+
 ## [1.4.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.3.0...v1.4.0) (2026-07-21)
 
 ### Features
