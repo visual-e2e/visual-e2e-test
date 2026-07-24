@@ -68,6 +68,7 @@ export async function startSidecar(
     E2E_ROOT: appRoot,
     PROJECTS_DIR: layout.projectsDir,
     CONFIG_DIR: layout.configDir,
+    TOOLS_DIR: layout.toolsDir,
     WORKSPACE_PORT: String(port),
     WORKSPACE_HOST: "127.0.0.1",
     E2E_RUNTIME: "client",

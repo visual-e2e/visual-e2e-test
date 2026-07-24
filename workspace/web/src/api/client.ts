@@ -199,7 +199,18 @@ export const api = {
     ),
 
   toolsRegistry: () =>
-    request<import("../features/tools/types").ToolRegistryResponse>("/api/tools/registry"),
+    request<import("../features/tools/types").ToolRegistryResponse>("/api/tools"),
+  listTools: () =>
+    request<import("../features/tools/types").ToolRegistryResponse>("/api/tools"),
+  installTool: (path: string) =>
+    request<{ ok: boolean; tool: { id: string; version: string; name: string } }>(
+      "/api/tools/install",
+      { method: "POST", body: JSON.stringify({ path }) },
+    ),
+  uninstallTool: (toolId: string) =>
+    request<{ ok: boolean }>(`/api/tools/${encodeURIComponent(toolId)}`, {
+      method: "DELETE",
+    }),
 };
 
 function draftPayload(draft: ScenarioDraft): Record<string, unknown> {

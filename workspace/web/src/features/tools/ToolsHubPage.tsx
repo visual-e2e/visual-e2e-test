@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Typography,
   Card,
@@ -13,6 +13,8 @@ import {
   Input,
   Dropdown,
   Radio,
+  Tag,
+  Space,
 } from "antd";
 import type { MenuProps } from "antd";
 import {
@@ -23,6 +25,7 @@ import {
   MoreOutlined,
   EditOutlined,
   DeleteOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { ScrollPane } from "../../components/layout/ScrollPane";
@@ -77,14 +80,23 @@ function CustomIcon({ iconUrl, toolUrl }: { iconUrl?: string; toolUrl: string })
   );
 }
 
+function sourceLabel(source?: ToolRegistryEntry["source"]): string | null {
+  if (source === "user") return "已安装";
+  if (source === "dev-link") return "开发";
+  if (source === "bundled") return "内置";
+  return null;
+}
+
 interface ToolCardProps {
   title: React.ReactNode;
   description?: string;
+  extra?: React.ReactNode;
+  footer?: React.ReactNode;
   onOpen: () => void;
   menuItems?: MenuProps["items"];
 }
 
-function ToolCard({ title, description, onOpen, menuItems }: ToolCardProps) {
+function ToolCard({ title, description, extra, footer, onOpen, menuItems }: ToolCardProps) {
   return (
     <Card
       className="tools-hub__card"
@@ -110,26 +122,30 @@ function ToolCard({ title, description, onOpen, menuItems }: ToolCardProps) {
         </div>
       }
     >
-      <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>
+      {extra}
+      <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: footer ? 8 : 0 }}>
         {description || "—"}
       </Typography.Paragraph>
+      {footer}
     </Card>
   );
 }
 
 export function ToolsHubPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [customTools, setCustomTools] = useState<CustomTool[]>(() => listCustomTools());
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CustomTool | null>(null);
+  const [installing, setInstalling] = useState(false);
   const [form] = Form.useForm<ToolFormValues>();
 
   const registryQuery = useQuery({
     queryKey: ["tools-registry"],
-    queryFn: api.toolsRegistry,
+    queryFn: api.listTools,
   });
 
-  const builtinTools = registryQuery.data?.tools ?? [];
+  const platformTools = registryQuery.data?.tools ?? [];
 
   const openCreateModal = () => {
     setEditing(null);
@@ -188,6 +204,47 @@ export function ToolsHubPage() {
     });
   };
 
+  const handleInstall = async () => {
+    if (!window.electronAPI?.pickToolPackage) {
+      message.warning("请在桌面客户端中安装工具包");
+      return;
+    }
+    setInstalling(true);
+    try {
+      const path = await window.electronAPI.pickToolPackage();
+      if (!path) return;
+      const result = await api.installTool(path);
+      await queryClient.invalidateQueries({ queryKey: ["tools-registry"] });
+      message.success(`已安装 ${result.tool.name} v${result.tool.version}`);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "安装失败");
+    } finally {
+      setInstalling(false);
+    }
+  };
+
+  const handleUninstall = (tool: ToolRegistryEntry) => {
+    Modal.confirm({
+      title: "卸载工具",
+      content: `确定卸载「${tool.name}」v${tool.version ?? "?"}？`,
+      okText: "卸载",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          if (window.electronAPI?.stopTool) {
+            await window.electronAPI.stopTool(tool.id);
+          }
+          await api.uninstallTool(tool.id);
+          await queryClient.invalidateQueries({ queryKey: ["tools-registry"] });
+          message.success("已卸载");
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : "卸载失败");
+        }
+      },
+    });
+  };
+
   const customMenu = (tool: CustomTool): MenuProps["items"] => [
     {
       key: "edit",
@@ -209,6 +266,22 @@ export function ToolsHubPage() {
       },
     },
   ];
+
+  const platformMenu = (tool: ToolRegistryEntry): MenuProps["items"] | undefined => {
+    if (!tool.uninstallable) return undefined;
+    return [
+      {
+        key: "uninstall",
+        icon: <DeleteOutlined />,
+        label: "卸载",
+        danger: true,
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          handleUninstall(tool);
+        },
+      },
+    ];
+  };
 
   const openCustomTool = async (tool: CustomTool) => {
     if (tool.openMode === "embedded") {
@@ -234,23 +307,28 @@ export function ToolsHubPage() {
             工具箱
           </Typography.Title>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            测试辅助工具集合，用于处理截图、文件等测试过程中的常见操作。
+            安装包工具与内置工具；用户安装的工具保存在本机，升级主应用不会清除。
           </Typography.Paragraph>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-          添加工具
-        </Button>
+        <Space>
+          <Button icon={<UploadOutlined />} loading={installing} onClick={() => void handleInstall()}>
+            安装工具包
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+            添加外链
+          </Button>
+        </Space>
       </div>
 
       {registryQuery.isLoading && <Spin style={{ marginTop: 24 }} />}
 
-      {!registryQuery.isLoading && builtinTools.length > 0 && (
+      {!registryQuery.isLoading && platformTools.length > 0 && (
         <section className="tools-hub__section">
           <Typography.Title level={5} className="tools-hub__section-title">
-            内置工具
+            平台工具
           </Typography.Title>
           <div className="tools-hub__grid">
-            {builtinTools.map((tool: ToolRegistryEntry) => (
+            {platformTools.map((tool: ToolRegistryEntry) => (
               <ToolCard
                 key={tool.id}
                 title={
@@ -259,8 +337,23 @@ export function ToolsHubPage() {
                     <span className="tools-hub__card-title-text">{tool.name}</span>
                   </>
                 }
+                extra={
+                  <div className="tools-hub__meta">
+                    <Tag>{tool.version ? `v${tool.version}` : "v?"}</Tag>
+                    {sourceLabel(tool.source) && <Tag color="blue">{sourceLabel(tool.source)}</Tag>}
+                    {tool.compatible === false && <Tag color="warning">需更新</Tag>}
+                  </div>
+                }
                 description={tool.description}
+                footer={
+                  tool.prodPort ? (
+                    <Typography.Text type="secondary" className="tools-hub__card-port">
+                      端口 {tool.prodPort}
+                    </Typography.Text>
+                  ) : null
+                }
                 onOpen={() => navigate(`/tools/${tool.id}`)}
+                menuItems={platformMenu(tool)}
               />
             ))}
           </div>
@@ -269,12 +362,12 @@ export function ToolsHubPage() {
 
       <section className="tools-hub__section">
         <Typography.Title level={5} className="tools-hub__section-title">
-          自定义
+          自定义外链
         </Typography.Title>
-        {customTools.length === 0 && !registryQuery.isLoading && builtinTools.length === 0 ? (
+        {customTools.length === 0 && !registryQuery.isLoading && platformTools.length === 0 ? (
           <Empty description="暂无工具" />
         ) : customTools.length === 0 ? (
-          <Empty description="暂无自定义工具" />
+          <Empty description="暂无自定义外链" />
         ) : (
           <div className="tools-hub__grid">
             {customTools.map((tool) => (
@@ -300,7 +393,7 @@ export function ToolsHubPage() {
       </section>
 
       <Modal
-        title={editing ? "编辑工具" : "添加工具"}
+        title={editing ? "编辑外链" : "添加外链"}
         open={modalOpen}
         onCancel={() => {
           setModalOpen(false);

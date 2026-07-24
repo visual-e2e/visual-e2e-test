@@ -63,6 +63,8 @@ export function registerProjectMiddleware(app: FastifyInstance, config: Workspac
     if (req.url.startsWith("/api/health") || req.url.startsWith("/artifacts/")) return;
     if (req.url.startsWith("/api/runs/artifacts/")) return;
     if (req.url === "/api/projects" || req.url.startsWith("/api/projects/")) return;
+    // Tools are app-global (not project-scoped); Electron ensure-tool has no X-Project-Id
+    if (req.url === "/api/tools" || req.url.startsWith("/api/tools/")) return;
     if (req.url.startsWith("/api/config/settings")) return;
     if (!req.url.startsWith("/api/")) return;
 

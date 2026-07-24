@@ -171,36 +171,11 @@ function main() {
 }
 
 function stageTools(repoRoot, stageRoot) {
-  const toolsRoot = join(repoRoot, "tools");
-  const registryPath = join(toolsRoot, "registry.json");
-  if (!existsSync(registryPath)) return;
-
-  const destTools = join(stageRoot, "tools");
-  mkdirSync(destTools, { recursive: true });
-  cpSync(registryPath, join(destTools, "registry.json"));
-
-  const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-  for (const tool of registry.tools ?? []) {
-    const entry = tool.entry ?? tool.id;
-    const src = join(toolsRoot, entry);
-    const dest = join(destTools, entry);
-    const artifacts = [
-      ["server/dist", join(src, "server/dist")],
-      ["web/dist", join(src, "web/dist")],
-      ["tool.json", join(src, "tool.json")],
-    ];
-    for (const [rel, abs] of artifacts) {
-      if (!existsSync(abs)) {
-        console.error(`Missing tool build: ${join(entry, rel)} — run npm run tools:build`);
-        process.exit(1);
-      }
-      const target = join(dest, rel);
-      mkdirSync(dirname(target), { recursive: true });
-      copyFiltered(abs, target);
-    }
-    stageProductionDependencies(src, dest, `tool ${entry}`);
-    console.log(`Staged tools/${entry}/`);
+  // Business tools are installed at runtime into {userData}/tools — not staged into the app bundle.
+  if (process.env.STAGE_BUNDLED_TOOLS === "1") {
+    console.warn("STAGE_BUNDLED_TOOLS=1 is deprecated; bundled tools were removed from this repo");
   }
+  console.log("Skipping bundled tools stage (use Tools hub to install .vettool.zip packages)");
 }
 
 main();

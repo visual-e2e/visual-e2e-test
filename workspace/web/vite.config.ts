@@ -1,7 +1,11 @@
 import { gzipSync } from "node:zlib";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 function bundleSizeBudget(): Plugin {
   const maxEntryGzipKiB = Number(process.env.WEB_MAX_ENTRY_GZIP_KIB ?? 300);
@@ -39,6 +43,11 @@ function bundleSizeBudget(): Plugin {
 
 export default defineConfig({
   plugins: [react(), bundleSizeBudget()],
+  resolve: {
+    alias: {
+      "@vet/rpc": path.join(repoRoot, "rpc"),
+    },
+  },
   server: {
     port: Number(process.env.WEB_PORT ?? 5173),
     proxy: {

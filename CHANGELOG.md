@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ## [2.0.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.4.0...v2.0.0) (2026-07-23)
 
+### Features
+
+- 工具箱升级为可安装的工具平台
+  - 支持安装 `.vettool.zip` 工具包；列表展示工具当前版本
+  - 用户安装的工具保存在本机 Application Support 下的 `tools/` 目录，升级主应用不会清除
+  - 可卸载已安装工具
+  - 主应用与工具通过统一 RPC 协议通信（兼容旧版消息）
+- 图片重命名、场景录制改为独立工具包
+  - 不再内置在主应用仓库；通过工具箱安装使用
+- 新增健康扫描工具包（`health-scan`）
+  - 扫描静态资源 404、接口 5xx、页面布局错乱与疑似失效点击
+
 ## [1.4.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.3.0...v1.4.0) (2026-07-21)
 
 ### Features

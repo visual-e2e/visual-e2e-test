@@ -9,10 +9,16 @@ import { ScrollPane } from "../../components/layout/ScrollPane";
 import { getCustomTool, isCustomToolId, type CustomTool } from "./custom-tools-store";
 import {
   TOOL_MSG,
+  toolApiOrigin,
   toolWebOrigin,
   type ToolProjectContextMessage,
   type ToolRegistryEntry,
 } from "./types";
+import {
+  attachHostRpcBridge,
+  normalizeCapabilities,
+  notifyTool,
+} from "@vet/rpc/host-bridge";
 import "./tools.css";
 
 function parseBaseUrlFromEnv(content: string): string {
@@ -42,18 +48,29 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
     enabled: Boolean(projectId),
   });
 
-  const pushProjectContext = useCallback(() => {
-    if (!projectId || !iframeRef.current?.contentWindow) return;
+  const buildProjectContext = useCallback((): ToolProjectContextMessage | null => {
+    if (!projectId) return null;
     const project = projects.find((p) => p.id === projectId);
-    const payload: ToolProjectContextMessage = {
+    return {
       type: TOOL_MSG.PROJECT_CONTEXT,
       projectId,
       projectName: project?.name,
       baseUrl: parseBaseUrlFromEnv(envQuery.data?.content ?? ""),
       scenariosRelPath: `projects/${projectId}/scenarios`,
     };
+  }, [projectId, projects, envQuery.data?.content]);
+
+  const pushProjectContext = useCallback(() => {
+    const payload = buildProjectContext();
+    if (!payload || !iframeRef.current?.contentWindow) return;
     iframeRef.current.contentWindow.postMessage(payload, webOrigin);
-  }, [projectId, projects, envQuery.data?.content, webOrigin]);
+    notifyTool(iframeRef.current.contentWindow, webOrigin, "project.contextChanged", {
+      projectId: payload.projectId,
+      projectName: payload.projectName,
+      baseUrl: payload.baseUrl,
+      scenariosRelPath: payload.scenariosRelPath,
+    });
+  }, [buildProjectContext, webOrigin]);
 
   useEffect(() => {
     setReady(false);
@@ -64,9 +81,10 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (window.electronAPI?.ensureBuiltinTool) {
+      const ensure = window.electronAPI?.ensureTool ?? window.electronAPI?.ensureBuiltinTool;
+      if (ensure) {
         try {
-          await window.electronAPI.ensureBuiltinTool(tool.id);
+          await ensure(tool.id);
         } catch (err) {
           if (!cancelled) {
             setError(err instanceof Error ? err.message : "工具启动失败");
@@ -91,7 +109,7 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
         await new Promise((r) => setTimeout(r, 400));
       }
       if (!cancelled) {
-        setError("工具暂不可用，请稍后重试");
+        setError("工具暂不可用，请确认已安装工具包并稍后重试");
       }
     })();
     return () => {
@@ -106,7 +124,38 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
   }, [iframeLoaded, ready, pushProjectContext]);
 
   useEffect(() => {
-    const onMessage = async (event: MessageEvent) => {
+    const capabilities = normalizeCapabilities(tool.capabilities);
+    const detachRpc = attachHostRpcBridge({
+      webOrigin,
+      capabilities,
+      getContentWindow: () => iframeRef.current?.contentWindow,
+      handlers: {
+        getProjectContext: () => {
+          const ctx = buildProjectContext();
+          if (!ctx) return null;
+          return {
+            projectId: ctx.projectId,
+            projectName: ctx.projectName,
+            baseUrl: ctx.baseUrl,
+            scenariosRelPath: ctx.scenariosRelPath,
+          };
+        },
+        pickFolder: async () => {
+          if (window.electronAPI?.pickFolder) {
+            return window.electronAPI.pickFolder();
+          }
+          return null;
+        },
+        navigateScenario: (module, scenario) => {
+          message.success(`已导入场景，正在打开 ${module}/${scenario}`);
+          navigate(
+            `/scenarios?module=${encodeURIComponent(module)}&scenario=${encodeURIComponent(scenario)}`,
+          );
+        },
+      },
+    });
+
+    const onLegacyMessage = async (event: MessageEvent) => {
       if (event.origin !== webOrigin) return;
       const data = event.data as {
         type?: string;
@@ -140,9 +189,12 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
       }
     };
 
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [webOrigin, pushProjectContext, navigate]);
+    window.addEventListener("message", onLegacyMessage);
+    return () => {
+      detachRpc();
+      window.removeEventListener("message", onLegacyMessage);
+    };
+  }, [webOrigin, pushProjectContext, navigate, buildProjectContext, tool.capabilities]);
 
   if (error) {
     return (
@@ -221,7 +273,7 @@ export function ToolHostPage() {
 
   const registryQuery = useQuery({
     queryKey: ["tools-registry"],
-    queryFn: api.toolsRegistry,
+    queryFn: api.listTools,
     enabled: !isCustomTool,
   });
 
@@ -264,8 +316,21 @@ export function ToolHostPage() {
     );
   }
 
+  if (builtinTool.compatible === false) {
+    return (
+      <ScrollPane>
+        <Alert
+          type="warning"
+          showIcon
+          message={`${builtinTool.name}（v${builtinTool.version ?? "?"}）与当前主应用协议不兼容`}
+          description={builtinTool.incompatibleReason || "请更新工具后重新安装"}
+        />
+      </ScrollPane>
+    );
+  }
+
   const webOrigin = toolWebOrigin(builtinTool, isDev);
-  const apiOrigin = `http://127.0.0.1:${isDev ? builtinTool.devPort : builtinTool.prodPort}`;
+  const apiOrigin = toolApiOrigin(builtinTool, isDev);
 
   return (
     <div className="tool-host">

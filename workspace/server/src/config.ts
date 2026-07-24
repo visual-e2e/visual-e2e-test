@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveDefaultProjectId, listProjectIds } from "./project-context.js";
 import { resolveConfigDir, resolveE2eRoot, resolveProjectsDir, resolveSettingsPath } from "./paths.js";
+import { ensureToolsDir, resolveToolsDir } from "./tools/paths.js";
 
 function tryResolveDefaultProjectId(e2eRoot: string): string {
   if (listProjectIds(e2eRoot).length === 0) return "";
@@ -22,6 +23,7 @@ export interface WorkspaceConfig {
   e2eRoot: string;
   projectsDir: string;
   configDir: string;
+  toolsDir: string;
   settingsPath: string;
   defaultProjectId: string;
   port: number;
@@ -38,6 +40,8 @@ export function loadConfig(): WorkspaceConfig {
 
   const projectsDir = resolveProjectsDir(e2eRoot);
   const configDir = resolveConfigDir(e2eRoot);
+  const toolsDir = resolveToolsDir();
+  ensureToolsDir(toolsDir);
   const settingsPath = resolveSettingsPath(e2eRoot);
   const defaultProjectId = tryResolveDefaultProjectId(e2eRoot);
   const serveWeb = process.env.SERVE_WEB === "1" || process.env.SERVE_WEB === "true";
@@ -48,6 +52,7 @@ export function loadConfig(): WorkspaceConfig {
     e2eRoot,
     projectsDir,
     configDir,
+    toolsDir,
     settingsPath,
     defaultProjectId,
     port: Number(process.env.WORKSPACE_PORT ?? 3100),

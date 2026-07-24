@@ -15,7 +15,7 @@ import { registerProfileRoutes } from "./routes/profiles.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerBrowserRoutes } from "./routes/browser.js";
-import { registerToolsRegistryRoutes } from "./routes/tools-registry.js";
+import { registerToolsRoutes } from "./tools/routes.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
   registerRunRoutes(app, runService, config);
   registerConfigRoutes(app, settingsRepo);
   registerBrowserRoutes(app, config);
-  registerToolsRegistryRoutes(app, config.e2eRoot);
+  registerToolsRoutes(app, { e2eRoot: config.e2eRoot, toolsDir: config.toolsDir });
 
   if (config.serveWeb) {
     await app.register(fastifyStatic, {
@@ -77,6 +77,7 @@ async function main(): Promise<void> {
   console.log(`E2E_RUNTIME: ${config.runtime}`);
   console.log(`E2E_ROOT: ${config.e2eRoot}`);
   console.log(`PROJECTS_DIR: ${config.projectsDir}`);
+  console.log(`TOOLS_DIR: ${config.toolsDir}`);
   console.log(`Projects: ${listProjectIds(config.e2eRoot).join(", ") || "(none)"}`);
 }
 

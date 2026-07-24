@@ -4,7 +4,7 @@ import {
   app, BrowserWindow, dialog, ipcMain, shell, type BrowserWindow as BrowserWindowType,
 } from "electron";
 import { createReportWindow } from "../windows/create-window.js";
-import { ensureToolRunning } from "../tools/tool-manager.js";
+import { ensureToolRunning, stopTool } from "../tools/tool-manager.js";
 
 export interface IpcContext {
   reportWindow: BrowserWindowType | null;
@@ -93,10 +93,37 @@ export function registerIpcHandlers(ctx: IpcContext): void {
     }
   });
 
+  ipcMain.handle("pick-tool-package", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: "选择工具安装包",
+      properties: ["openFile"],
+      filters: [
+        { name: "Visual E2E Tool", extensions: ["vettool.zip", "zip"] },
+      ],
+    });
+    if (canceled || filePaths.length === 0) return null;
+    return filePaths[0] ?? null;
+  });
+
   ipcMain.handle("ensure-builtin-tool", async (_event, toolId: string) => {
     if (!toolId?.trim()) {
       throw new Error("toolId 不能为空");
     }
     return ensureToolRunning(toolId, ctx.isDev, ctx.appRoot, ctx.nodeBinary);
+  });
+
+  ipcMain.handle("ensure-tool", async (_event, toolId: string) => {
+    if (!toolId?.trim()) {
+      throw new Error("toolId 不能为空");
+    }
+    return ensureToolRunning(toolId, ctx.isDev, ctx.appRoot, ctx.nodeBinary);
+  });
+
+  ipcMain.handle("stop-tool", async (_event, toolId: string) => {
+    if (!toolId?.trim()) {
+      throw new Error("toolId 不能为空");
+    }
+    stopTool(toolId);
+    return { ok: true };
   });
 }

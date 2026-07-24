@@ -72,7 +72,9 @@ visual-e2e-test/
 │   ├── runner/                # ModuleRunner / RunSession
 │   └── cli.ts
 ├── electron/                  # 桌面客户端（main / sidecar / 打包资源）
-├── tools/                     # 工具箱（独立 mini-app，见 tools/README.md）
+├── tools/                     # 工具平台说明（业务工具为独立仓安装包）
+├── rpc/                       # Host ↔ 工具通信契约
+├── electron/                  # 桌面客户端（main / sidecar / 打包资源）
 └── workspace/                 # Visual E2E Test 工作台（server + web）
 ```
 
