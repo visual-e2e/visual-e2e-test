@@ -2,7 +2,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { HOST_RPC_PROTOCOL_VERSION, toolManifestSchema, type ToolDescriptor } from "./types.js";
 import { toolsDevLinksPath, toolsInstalledDir } from "./paths.js";
-import { allocateProdPort } from "./ports.js";
+import { declaredProdPort } from "./ports.js";
+import { setRuntimePort } from "./store.js";
 
 function readManifest(dir: string): ToolDescriptor | null {
   const manifestPath = join(dir, "tool.json");
@@ -104,14 +105,6 @@ export async function discoverToolsWithPorts(
   e2eRoot: string,
 ): Promise<ToolDescriptor[]> {
   const tools = discoverTools(toolsDir, e2eRoot);
-  const reserved = new Set<number>();
-  for (const tool of tools) {
-    if (tool.source === "bundled" && tool.ports.prod) {
-      reserved.add(tool.ports.prod);
-      if (tool.ports.dev) reserved.add(tool.ports.dev);
-      if (tool.ports.webDev) reserved.add(tool.ports.webDev);
-    }
-  }
 
   for (const tool of tools) {
     if (tool.source === "bundled") {
@@ -123,17 +116,25 @@ export async function discoverToolsWithPorts(
       };
       continue;
     }
-    const prod = await allocateProdPort({
-      toolsDir,
-      toolId: tool.id,
-      preferred: tool.ports.preferredProd ?? tool.ports.prod,
-      reserved,
-    });
-    tool.resolvedPorts = {
-      prod,
-      dev: tool.ports.dev,
-      webDev: tool.ports.webDev,
-    };
+
+    try {
+      const prod = declaredProdPort(tool.ports);
+      setRuntimePort(toolsDir, tool.id, prod);
+      tool.resolvedPorts = {
+        prod,
+        dev: tool.ports.dev,
+        webDev: tool.ports.webDev,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "端口声明无效";
+      tool.compatible = false;
+      tool.incompatibleReason = message;
+      tool.resolvedPorts = {
+        prod: tool.ports.prod ?? tool.ports.preferredProd ?? 0,
+        dev: tool.ports.dev,
+        webDev: tool.ports.webDev,
+      };
+    }
   }
   return tools;
 }

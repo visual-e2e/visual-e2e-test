@@ -1,5 +1,13 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
 import { resolveStorageLayout } from "../storage.js";
@@ -20,6 +28,64 @@ interface RunningTool {
 const running = new Map<string, RunningTool>();
 /** In-flight ensure calls (React Strict Mode can double-invoke). */
 const starting = new Map<string, Promise<number>>();
+
+/** Host-provided packages that tools keep external (ESM cannot use NODE_PATH). */
+const HOST_PEER_DEPS = ["playwright", "playwright-core"] as const;
+
+/**
+ * Symlink Host node_modules peers into the tool root so ESM can resolve them.
+ * NODE_PATH alone is ignored by Node ESM resolution.
+ */
+export function ensureHostPeerDeps(toolRoot: string, appRoot: string): void {
+  const hostNm = join(appRoot, "node_modules");
+  const toolNm = join(toolRoot, "node_modules");
+  mkdirSync(toolNm, { recursive: true });
+
+  for (const name of HOST_PEER_DEPS) {
+    const target = join(hostNm, name);
+    if (!existsSync(target)) continue;
+
+    const linkPath = join(toolNm, name);
+    try {
+      if (existsSync(linkPath) || lstatSync(linkPath).isSymbolicLink()) {
+        if (lstatSync(linkPath).isSymbolicLink() && readlinkSync(linkPath) === target) {
+          continue;
+        }
+        rmSync(linkPath, { recursive: true, force: true });
+      }
+    } catch {
+      try {
+        rmSync(linkPath, { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
+    }
+
+    try {
+      symlinkSync(target, linkPath, process.platform === "win32" ? "junction" : "dir");
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`无法为工具注入 Host 依赖 ${name}: ${detail}`);
+    }
+  }
+
+  // Tools that import playwright need the Host package; fail early with a clear hint
+  const needsPw =
+    existsSync(join(toolRoot, "server", "dist", "index.js")) &&
+    (() => {
+      try {
+        const code = readFileSync(join(toolRoot, "server", "dist", "index.js"), "utf-8");
+        return /\bfrom\s*["']playwright["']|\brequire\(["']playwright["']\)/.test(code);
+      } catch {
+        return false;
+      }
+    })();
+  if (needsPw && !existsSync(join(toolNm, "playwright"))) {
+    throw new Error(
+      `Host 未安装 playwright（期望: ${join(hostNm, "playwright")}）。请在主应用目录执行 npm install。`,
+    );
+  }
+}
 
 async function waitForHealth(port: number, timeoutMs: number): Promise<void> {
   const url = `http://127.0.0.1:${port}/api/health`;
@@ -227,6 +293,8 @@ export async function ensureToolRunning(
     if (await isHealthy(port)) {
       return port;
     }
+
+    ensureHostPeerDeps(tool.path, appRoot);
 
     const child = spawn(nodeBinary, [entry], {
       cwd: tool.path,

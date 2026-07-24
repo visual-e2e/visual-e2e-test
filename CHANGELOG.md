@@ -18,6 +18,13 @@ All notable changes to this project will be documented in this file.
 - 新增健康扫描工具包（`health-scan`）
   - 扫描静态资源 404、接口 5xx、页面布局错乱与疑似失效点击
 
+### Fixes
+
+- 工具端口严格使用 `tool.json` 声明值，不再自动递增
+  - 安装时若端口被占用或与其它已装工具冲突，拒绝安装并提示先释放
+- 启动已安装工具时注入 Host 的 `playwright` 软链
+  - 修复场景录制等工具因 ESM 无法通过 `NODE_PATH` 解析依赖而启动失败
+
 ## [1.4.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.3.0...v1.4.0) (2026-07-21)
 
 ### Features

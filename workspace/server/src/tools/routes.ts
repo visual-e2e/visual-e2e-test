@@ -80,7 +80,7 @@ export function registerToolsRoutes(
     if (!zipPath) return reply.status(400).send({ error: "path 不能为空" });
     if (!existsSync(zipPath)) return reply.status(400).send({ error: "文件不存在" });
     try {
-      const result = installToolFromZip(toolsDir, zipPath);
+      const result = await installToolFromZip(toolsDir, zipPath);
       return { ok: true, tool: result };
     } catch (err) {
       const message = err instanceof Error ? err.message : "安装失败";

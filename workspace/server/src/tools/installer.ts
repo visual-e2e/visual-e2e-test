@@ -15,7 +15,8 @@ import { execFileSync } from "node:child_process";
 import { toolManifestSchema } from "./types.js";
 import { ensureToolsDir, toolsInstalledDir } from "./paths.js";
 import { removeInstalledDir, removeRegistryEntry, upsertRegistryEntry } from "./store.js";
-import { clearRuntimePort } from "./store.js";
+import { clearRuntimePort, setRuntimePort } from "./store.js";
+import { assertProdPortAvailableForInstall } from "./ports.js";
 
 function extractZip(zipPath: string, destDir: string): void {
   mkdirSync(destDir, { recursive: true });
@@ -77,7 +78,7 @@ export interface InstallResult {
   path: string;
 }
 
-export function installToolFromZip(toolsDir: string, zipPath: string): InstallResult {
+export async function installToolFromZip(toolsDir: string, zipPath: string): Promise<InstallResult> {
   if (!existsSync(zipPath)) {
     throw new Error(`文件不存在: ${zipPath}`);
   }
@@ -96,6 +97,14 @@ export function installToolFromZip(toolsDir: string, zipPath: string): InstallRe
     const manifest = toolManifestSchema.parse(
       JSON.parse(readFileSync(join(packageRoot, "tool.json"), "utf-8")),
     );
+
+    const prodPort = await assertProdPortAvailableForInstall({
+      toolsDir,
+      toolId: manifest.id,
+      preferred: manifest.ports?.preferredProd,
+      prod: manifest.ports?.prod,
+    });
+
     const installedRoot = toolsInstalledDir(toolsDir);
     const target = join(installedRoot, manifest.id);
 
@@ -105,7 +114,6 @@ export function installToolFromZip(toolsDir: string, zipPath: string): InstallRe
     mkdirSync(dirname(target), { recursive: true });
     cpSync(packageRoot, target, { recursive: true });
 
-    // ensure tool.json version written (already copied)
     writeFileSync(
       join(target, "tool.json"),
       `${JSON.stringify(
@@ -125,6 +133,7 @@ export function installToolFromZip(toolsDir: string, zipPath: string): InstallRe
       installedAt: new Date().toISOString(),
       source: "user",
     });
+    setRuntimePort(toolsDir, manifest.id, prodPort);
 
     return {
       id: manifest.id,

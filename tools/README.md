@@ -13,6 +13,10 @@
 
 升级主应用**不会**清除已安装工具。
 
+安装时使用工具包 `tool.json` 中声明的生产端口（`preferredProd` / `prod`）；若该端口已被占用或与其它已装工具冲突，安装会失败并提示先释放端口。
+
+依赖 Playwright 的工具（如场景录制、健康扫描）打包时不内嵌 `playwright`；启动时 Host 会把主应用 `node_modules` 中的 `playwright` / `playwright-core` 软链到工具目录，供 ESM 解析（仅设 `NODE_PATH` 不够）。
+
 ## 独立工具仓库
 
 | 工具 | 仓库 |
